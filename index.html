@@ -3,552 +3,597 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Sala de estudio — reloj</title>
+<title>Cuckoo ENARM</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#0B1614; --panel:#112420; --panel-up:#17302A; --line:#20403A;
-    --trabajo:#4FB08A; --trabajo-tenue:#2B6B54;
-    --descanso:#E2A93E; --descanso-tenue:#8A6A26;
-    --rojo:#E2716B;
-    --texto:#EBF4EF; --tenue:#84A498; --tenue2:#5D7A70;
-    --mono: ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace;
-    --sans: -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
-    --disp: "Space Grotesk", var(--sans);
-  }
-  *{box-sizing:border-box}
-  body{
-    margin:0;background:var(--bg);color:var(--texto);font-family:var(--sans);
-    -webkit-font-smoothing:antialiased;padding:20px 16px 40px;
-  }
-  .wrap{max-width:760px;margin:0 auto}
-  .eyebrow{font-family:var(--disp);font-weight:600;font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--tenue);margin-bottom:8px}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;
-    animation:entrar .5s cubic-bezier(.16,1,.3,1) both;}
-  @keyframes entrar{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-  .sala{font-family:var(--disp);font-weight:700;font-size:28px;letter-spacing:6px;line-height:1}
-  button{
-    font-family:var(--sans);font-size:14px;font-weight:500;color:var(--texto);
-    background:transparent;border:1px solid var(--line);border-radius:9px;
-    padding:10px 16px;cursor:pointer;transition:background .12s ease,border-color .12s ease,transform .08s ease;
-  }
-  button:hover{background:var(--panel-up)}
-  button:active{transform:scale(.97)}
-  button.fuerte{background:var(--trabajo);border-color:var(--trabajo);color:#06211A;font-weight:700}
-  button.fuerte.descanso{background:var(--descanso);border-color:var(--descanso);color:#2B1E02}
-  button.tenue{border-color:transparent;color:var(--tenue)}
-  button.chico{font-size:12px;padding:6px 12px}
-  button:disabled{opacity:.35;cursor:not-allowed}
-  button:focus-visible{outline:2px solid var(--trabajo);outline-offset:2px}
-  input[type="text"],input[type="number"]{
-    background:var(--panel-up);border:1px solid var(--line);border-radius:9px;
-    padding:10px 12px;color:var(--texto);font-family:var(--sans);font-size:15px;outline:none;
-  }
-  input:focus{border-color:var(--trabajo)}
-
-  /* ---- anillo ---- */
-  .escenario{display:flex;flex-direction:column;align-items:center;padding:10px 0 4px}
-  .anillo-caja{position:relative;width:min(72vw,300px);height:min(72vw,300px)}
-  .anillo-caja.pulso{animation:respirar 2.6s ease-in-out infinite}
-  @keyframes respirar{
-    0%,100%{filter:drop-shadow(0 0 0px transparent)}
-    50%{filter:drop-shadow(0 0 22px var(--glow, rgba(79,176,138,.35)))}
-  }
-  .anillo-caja.flash{animation:destello .9s ease-out}
-  @keyframes destello{
-    0%{transform:scale(1)}
-    30%{transform:scale(1.045)}
-    100%{transform:scale(1)}
-  }
-  svg.anillo{width:100%;height:100%;transform:rotate(-90deg)}
-  .pista{fill:none;stroke:var(--line);stroke-width:9}
-  .progreso{fill:none;stroke:var(--trabajo);stroke-width:9;stroke-linecap:round;
-    transition:stroke-dashoffset .25s linear, stroke .3s ease}
-  .progreso.descanso{stroke:var(--descanso)}
-  .centro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
-  .fase{font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:3px;text-transform:uppercase;color:var(--trabajo);
-    transition:color .3s ease}
-  .fase.descanso{color:var(--descanso)}
-  .digitos{font-family:var(--mono);font-size:clamp(46px,11vw,64px);font-variant-numeric:tabular-nums;line-height:1}
-  .subestado{font-size:12.5px;color:var(--tenue);text-align:center;min-height:16px;max-width:220px}
-
-  .controles-fila{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:22px}
-  .ajustes{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
-  .campo-mini{display:flex;flex-direction:column;gap:5px;align-items:center}
-  .campo-mini label{font-size:11px;color:var(--tenue2);letter-spacing:.4px}
-  .campo-mini .caja{display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:8px;padding:2px 4px 2px 10px}
-  .campo-mini input{width:44px;background:transparent;border:none;padding:6px 2px;font-family:var(--mono);font-size:14px}
-  .toggle-loop{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tenue);cursor:pointer;user-select:none}
-  .toggle-loop input{accent-color:var(--trabajo);width:16px;height:16px}
-
-  /* ---- personas ---- */
-  .persona{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line);
-    animation:entrar .35s ease both}
-  .persona:first-of-type{border-top:none}
-  .avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-    font-family:var(--disp);font-weight:700;font-size:13px;color:#08201A;flex:none}
-  .persona .info{flex:1;min-width:0}
-  .persona .n{font-size:14.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .persona .n.yo::after{content:" · tú";color:var(--trabajo);font-weight:600}
-  .persona .d{font-family:var(--mono);font-size:12px;color:var(--tenue)}
-
-  /* ---- feed ---- */
-  .feed{display:flex;flex-direction:column;gap:2px;max-height:170px;overflow-y:auto}
-  .feed-item{font-size:12.5px;color:var(--tenue2);padding:5px 0;border-top:1px solid var(--line);
-    animation:entrarFeed .3s ease both;display:flex;gap:6px}
-  .feed-item:first-child{border-top:none}
-  @keyframes entrarFeed{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:none}}
-  .feed-item b{color:var(--tenue);font-weight:600}
-  .feed-vacio{font-size:13px;color:var(--tenue2)}
-
-  .pie{font-size:12px;color:var(--tenue2);margin-top:14px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
-  .aviso{margin-top:12px;font-size:13px;color:var(--descanso);line-height:1.5}
-  .oculto{display:none !important}
-  .fila{display:flex;gap:8px}
-  ::-webkit-scrollbar{width:6px}
-  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
-  @media (prefers-reduced-motion: reduce){ *{animation:none !important;transition:none !important} }
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{overflow-x:hidden}
+button{cursor:pointer;font-family:inherit}
+input{font-family:inherit}
+@keyframes floatYNormal{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-16px) rotate(2deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes popIn{from{opacity:0;transform:scale(.75)}to{opacity:1;transform:scale(1)}}
+@keyframes gradientShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.28);transform:scale(1)}50%{box-shadow:0 0 0 20px rgba(255,255,255,0);transform:scale(1.018)}}
+@keyframes breathePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+@keyframes bounceHint{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(6px);opacity:1}}
+@keyframes confettiFall{0%{transform:translateY(-10px) rotate(0deg);opacity:1}100%{transform:translateY(170px) rotate(340deg);opacity:0}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<div class="wrap">
-
-  <!-- entrada de nombre -->
-  <div class="panel" id="panelEntrada">
-    <div class="eyebrow">Antes de entrar</div>
-    <h1 style="font-family:var(--disp);font-weight:700;font-size:21px;margin:0 0 8px">¿Cómo te llamas?</h1>
-    <p style="font-size:14px;color:var(--tenue);line-height:1.5;margin:0 0 16px">
-      Tu nombre aparece con tus bloques de estudio para todos en la sala.
-    </p>
-    <div class="fila">
-      <input type="text" id="campoNombre" placeholder="Aris" maxlength="18" style="flex:1" />
-      <button class="fuerte" id="btnUnirse">Entrar a la sala</button>
-    </div>
-  </div>
-
-  <div id="app" class="oculto">
-    <div class="head">
-      <div>
-        <div class="eyebrow">Sala</div>
-        <div class="sala" id="tituloSala">—</div>
-      </div>
-      <div class="fila" style="flex-wrap:wrap">
-        <button class="chico" id="btnLink">Copiar link</button>
-        <button class="chico" id="btnSonido">Activar sonido</button>
-      </div>
-    </div>
-
-    <div class="panel" id="panelReloj">
-      <div class="escenario">
-        <div class="anillo-caja" id="anilloCaja">
-          <svg class="anillo" viewBox="0 0 220 220">
-            <circle class="pista" cx="110" cy="110" r="98"></circle>
-            <circle class="progreso" id="circProgreso" cx="110" cy="110" r="98"></circle>
-          </svg>
-          <div class="centro">
-            <div class="fase" id="etiquetaFase">LISTO</div>
-            <div class="digitos" id="digitos">50:00</div>
-            <div class="subestado" id="subestado">Configura tus bloques y arranca</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="controles-fila" id="filaAccion">
-        <button class="fuerte" id="btnIniciar">Iniciar</button>
-      </div>
-
-      <div class="controles-fila oculto" id="filaEnCurso">
-        <button id="btnPausar">Pausar</button>
-        <button class="fuerte oculto" id="btnReanudar">Reanudar</button>
-        <button class="tenue" id="btnSaltar">Saltar a siguiente</button>
-        <button class="tenue" id="btnDetener">Detener sesión</button>
-      </div>
-
-      <div class="ajustes" id="panelAjustes">
-        <div class="campo-mini">
-          <label>Trabajo (min)</label>
-          <div class="caja"><input type="number" id="minTrabajo" min="1" max="240" value="50" /></div>
-        </div>
-        <div class="campo-mini">
-          <label>Descanso (min)</label>
-          <div class="caja"><input type="number" id="minDescanso" min="1" max="60" value="10" /></div>
-        </div>
-        <label class="toggle-loop">
-          <input type="checkbox" id="autoLoop" checked />
-          Repetir en loop
-        </label>
-      </div>
-    </div>
-
-    <div class="panel" style="margin-top:14px">
-      <div class="eyebrow">En la sala (<span id="conteoGente">0</span>)</div>
-      <div id="listaGente"></div>
-    </div>
-
-    <div class="panel" style="margin-top:14px">
-      <div class="eyebrow">Actividad</div>
-      <div class="feed" id="feed"><div class="feed-vacio">Sin actividad todavía.</div></div>
-    </div>
-
-    <div class="pie">
-      <span id="pieIzq">—</span>
-      <span id="pieDer">Sonido apagado</span>
-    </div>
-    <div class="aviso oculto" id="aviso"></div>
-  </div>
-</div>
+<div id="root"></div>
 
 <script type="module">
-/* ========= CONFIGURACIÓN FIREBASE ========= */
+/* ========= CONFIGURACIÓN FIREBASE (reloj-enarm) ========= */
 const FIREBASE = {
   apiKey: "AIzaSyCurBiYUGckz1cpRmpTLWu_ketz12oIOoQ",
   databaseURL: "https://reloj-enarm-default-rtdb.firebaseio.com",
   projectId: "reloj-enarm"
 };
 
-/* ========= utilidades ========= */
-const $ = (id) => document.getElementById(id);
-const dosDig = (n) => String(n).padStart(2, "0");
-const formato = (ms) => {
-  const t = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
-  return h > 0 ? `${h}:${dosDig(m)}:${dosDig(s)}` : `${dosDig(m)}:${dosDig(s)}`;
-};
-const codigoNuevo = () => {
-  const L = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  return Array.from({length:4}, () => L[Math.floor(Math.random()*L.length)]).join("");
-};
+const root = document.getElementById("root");
+const esc = (s) => String(s ?? "").replace(/[<>&"]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));
+const params = new URLSearchParams(location.search);
 const idNuevo = () => Math.random().toString(36).slice(2, 10);
-const restante = (t, ahora) => !t ? 0 : (t.corriendo ? t.duracionMs - (ahora - t.iniciadoEn) : t.pausadoEn);
-const escapar = (s) => String(s).replace(/[<>&"]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));
-
-const PALETA = ["#4FB08A","#E2A93E","#C77DFF","#4FA5D1","#E2716B","#8FBF6B"];
-function colorDeNombre(nombre){
-  let h = 0;
-  for (const c of String(nombre)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return PALETA[h % PALETA.length];
-}
-function iniciales(nombre){
-  return String(nombre).trim().split(/\s+/).slice(0,2).map(p => p[0] || "").join("").toUpperCase() || "?";
-}
-
-/* ========= campana ========= */
-let ctxAudio = null, sonidoOn = false;
-async function activarSonido(){
-  try{
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if(!AC) return false;
-    ctxAudio = ctxAudio || new AC();
-    if(ctxAudio.state === "suspended") await ctxAudio.resume();
-    return ctxAudio.state === "running";
-  }catch{ return false; }
-}
-function tocarTono(freqs, vol, t0, dur){
-  freqs.forEach((f) => {
-    const osc = ctxAudio.createOscillator(), g = ctxAudio.createGain();
-    osc.type = "sine"; osc.frequency.value = f;
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    osc.connect(g); g.connect(ctxAudio.destination);
-    osc.start(t0); osc.stop(t0 + dur + 0.05);
-  });
-}
-function campanaFinTrabajo(){
-  if(!ctxAudio) return;
-  const t0 = ctxAudio.currentTime;
-  [0, 0.7, 1.4].forEach((d,i) => tocarTono([880,1320], i===0?0.35:0.2, t0+d, 1.0));
-}
-function campanaFinDescanso(){
-  if(!ctxAudio) return;
-  const t0 = ctxAudio.currentTime;
-  [0, 0.55].forEach((d) => tocarTono([660,990], 0.28, t0+d, 0.9));
-}
+const hoyISO = () => new Date().toISOString().slice(0, 10);
+function fmt(s) { s = Math.floor(Math.max(0, s)); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); }
 
 /* ========= estado ========= */
-const params = new URLSearchParams(location.search);
-const enVivo = !!FIREBASE.databaseURL;
-const sala = (params.get("sala") || "").toUpperCase() || codigoNuevo();
-const miId = idNuevo();
-let miNombre = localStorage.getItem("nombre-sala") || "";
-let miColor = "#4FB08A";
-let timer = null;
+const myId = idNuevo();
+const FACES = ["🧑\u200d⚕️", "👩\u200d⚕️", "🧑\u200d💻", "🧠", "📚"];
+
+const st = {
+  screen: params.get("sala") ? "profile" : "landing",
+  slug: (params.get("sala") || localStorage.getItem("cuckoo-slug") || "sala-enarm").trim(),
+  name: localStorage.getItem("cuckoo-nombre") || "",
+  face: localStorage.getItem("cuckoo-cara") || "🧑\u200d⚕️",
+  focusMin: Number(localStorage.getItem("cuckoo-focusMin")) || 50,
+  breakMin: Number(localStorage.getItem("cuckoo-breakMin")) || 10,
+  mode: "work",
+  flashMin: null,
+  breatheCount: null,
+  customOpen: false,
+  customValue: 50,
+  detailsOpen: false,
+  detailsTab: "ajustes",
+  soundOn: localStorage.getItem("cuckoo-sound") !== "0",
+  taskInput: "",
+  tasks: [],
+  toastMsg: "",
+  toastShow: false,
+  gente: {},       // gente REAL conectada — nunca inventada
+  timerFB: null,   // estado compartido del bloque actual, o null
+  historial: {},   // { personId: { pushId: {fecha, minutos, modo} } }
+};
 let backend = null;
-let procesadoClave = null; // evita doble-crédito local en la misma persona
+let toastTimer = null;
+let renderInterval = null;
+let breatheTimer = null;
+let creditedFor = null;
 
-/* ========= backend en vivo (Firebase) ========= */
-async function crearBackendFirebase(){
+/* ========= sonido / notificaciones ========= */
+function alarmSound() {
+  if (!st.soundOn) return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const a = new AC();
+    let t = a.currentTime + 0.02, count = 0;
+    while (t < a.currentTime + 6) {
+      const o = a.createOscillator(), g = a.createGain();
+      o.connect(g); g.connect(a.destination);
+      o.type = "sine";
+      o.frequency.value = count % 2 === 0 ? 880 : 720;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.16, t + 0.02);
+      g.gain.linearRampToValueAtTime(0, t + 0.28);
+      o.start(t); o.stop(t + 0.3);
+      t += 0.52; count++;
+    }
+  } catch (e) {}
+}
+function notify(texto) {
+  if (!st.soundOn) return;
+  try {
+    if ("Notification" in window) {
+      if (Notification.permission === "granted") new Notification("Cuckoo ENARM", { body: texto });
+      else if (Notification.permission !== "denied") Notification.requestPermission();
+    }
+  } catch (e) {}
+}
+function showToast(msg) {
+  clearTimeout(toastTimer);
+  st.toastMsg = msg; st.toastShow = true; render();
+  toastTimer = setTimeout(() => { st.toastShow = false; render(); }, 1800);
+}
+
+/* ========= Firebase — reemplaza localStorage+BroadcastChannel del original ========= */
+async function crearBackend() {
   const appMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-  const dbMod  = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js");
+  const dbMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js");
   const app = appMod.initializeApp(FIREBASE);
-  const db  = dbMod.getDatabase(app);
-  const refTimer  = dbMod.ref(db, `salas/${sala}/timer`);
-  const refGente  = dbMod.ref(db, `salas/${sala}/gente`);
-  const refYo     = dbMod.ref(db, `salas/${sala}/gente/${miId}`);
-  const refEventos = dbMod.ref(db, `salas/${sala}/eventos`);
+  const db = dbMod.getDatabase(app);
+  let unsubs = [];
 
-  dbMod.onDisconnect(refYo).remove();
+  function refs(s) {
+    return {
+      gente: dbMod.ref(db, `salas/${s}/gente`),
+      yo: dbMod.ref(db, `salas/${s}/gente/${myId}`),
+      timer: dbMod.ref(db, `salas/${s}/timer`),
+      historial: dbMod.ref(db, `salas/${s}/historial`),
+      miHistorial: dbMod.ref(db, `salas/${s}/historial/${myId}`),
+    };
+  }
 
   return {
-    dbMod, db, refTimer, refGente, refYo, refEventos,
-    escuchar(cbTimer, cbGente, cbEventos){
-      dbMod.onValue(refTimer, (snap) => cbTimer(snap.val()));
-      dbMod.onValue(refGente, (snap) => cbGente(Object.entries(snap.val() || {})));
-      const qEventos = dbMod.query(refEventos, dbMod.limitToLast(8));
-      dbMod.onValue(qEventos, (snap) => {
-        const arr = Object.values(snap.val() || {}).sort((a,b) => b.ts - a.ts);
-        cbEventos(arr);
-      });
+    unirseA(s) {
+      unsubs.forEach(u => u && u()); unsubs = [];
+      const r = refs(s);
+      dbMod.onDisconnect(r.yo).remove();
+      dbMod.set(r.yo, { nombre: st.name, cara: st.face });
+      unsubs.push(dbMod.onValue(r.gente, (snap) => { st.gente = snap.val() || {}; render(); }));
+      unsubs.push(dbMod.onValue(r.timer, (snap) => {
+        const nuevo = snap.val();
+        if (!nuevo || !st.timerFB || nuevo.iniciadoEn !== st.timerFB.iniciadoEn) creditedFor = null;
+        st.timerFB = nuevo; render();
+      }));
+      unsubs.push(dbMod.onValue(r.historial, (snap) => { st.historial = snap.val() || {}; render(); }));
     },
-    guardarTimer(t){ dbMod.set(refTimer, t); },
-    latido(datos){ dbMod.update(refYo, datos); },
-    evento(tipo, extra){ dbMod.push(refEventos, { tipo, nombre: miNombre, ts: Date.now(), ...extra }); }
+    salir(s) { dbMod.remove(refs(s).yo).catch(() => {}); unsubs.forEach(u => u && u()); unsubs = []; st.gente = {}; st.timerFB = null; },
+    iniciar(s, modo, minutos) { dbMod.set(refs(s).timer, { modo, duracionMs: minutos * 60000, iniciadoEn: Date.now(), pausado: false, restanteAlPausar: null }); },
+    pausar(s) { const t = st.timerFB; if (!t) return; const restante = t.duracionMs - (Date.now() - t.iniciadoEn); dbMod.update(refs(s).timer, { pausado: true, restanteAlPausar: restante }); },
+    reanudar(s) { const t = st.timerFB; if (!t) return; dbMod.update(refs(s).timer, { pausado: false, iniciadoEn: Date.now() - (t.duracionMs - t.restanteAlPausar) }); },
+    detener(s) { dbMod.set(refs(s).timer, null); },
+    acreditar(s, minutos, modo) { dbMod.push(refs(s).miHistorial, { fecha: hoyISO(), minutos, modo }); },
   };
 }
 
-/* ========= backend simple (sin Firebase, respaldo) ========= */
-function crearBackendLocal(){
-  return {
-    escuchar(cbTimer){
-      const leer = () => {
-        const h = new URLSearchParams(location.hash.slice(1));
-        const ini = Number(h.get("i")), dur = Number(h.get("d"));
-        if(ini && dur) cbTimer({ fase:"trabajo", duracionMs:dur, iniciadoEn:ini, pausadoEn:dur, corriendo:true,
-          por:h.get("p")||"", minTrabajoMin:Math.round(dur/60000), minDescansoMin:10, autoLoop:false });
-      };
-      leer();
-      window.addEventListener("hashchange", leer);
-    },
-    guardarTimer(t){
-      timer = t;
-      if(t && t.corriendo){
-        const h = new URLSearchParams({ i:String(t.iniciadoEn), d:String(t.duracionMs), p:miNombre||"" });
-        history.replaceState(null, "", location.pathname + location.search + "#" + h.toString());
-      }
-      pintarTodo();
-    },
-    latido(){}, evento(){}
-  };
+/* ========= cálculo del bloque compartido ========= */
+function restanteSegundos() {
+  const t = st.timerFB;
+  if (!t) return null;
+  const ms = t.pausado ? t.restanteAlPausar : t.duracionMs - (Date.now() - t.iniciadoEn);
+  return ms / 1000;
+}
+function modoEfectivo() { return st.timerFB ? st.timerFB.modo : st.mode; }
+
+function revisarFin() {
+  const t = st.timerFB;
+  if (!t || t.pausado) return;
+  const restante = restanteSegundos();
+  if (restante > 0) return;
+  if (creditedFor === t.iniciadoEn) return;
+  creditedFor = t.iniciadoEn;
+  const minutos = Math.round(t.duracionMs / 60000);
+  if (backend) backend.acreditar(st.slug, minutos, t.modo);
+  alarmSound();
+  notify(t.modo === "work" ? "Tu sesión de enfoque terminó 🎉" : "Tu descanso terminó, ¡de vuelta al estudio!");
+}
+
+/* ========= navegación / acciones ========= */
+function goProfileScreen() {
+  st.slug = (st.slug || "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 20) || "sala-enarm";
+  localStorage.setItem("cuckoo-slug", st.slug);
+  st.screen = "profile"; render();
+}
+async function enterRoom() {
+  st.name = (st.name || "").trim().slice(0, 22) || "Invitado";
+  localStorage.setItem("cuckoo-nombre", st.name);
+  localStorage.setItem("cuckoo-cara", st.face);
+  st.screen = "room"; render();
+  try {
+    if (!backend) backend = await crearBackend();
+    backend.unirseA(st.slug);
+  } catch (e) {
+    backend = null;
+    mostrarAviso("No se pudo conectar con la sala. Revisa tu conexión.");
+  }
+  try { st.tasks = JSON.parse(localStorage.getItem(`cuckoo-metas-${st.slug}`) || "[]"); } catch (e) {}
+  history.replaceState(null, "", `?sala=${encodeURIComponent(st.slug)}`);
+}
+function goLandingScreen() {
+  clearInterval(breatheTimer);
+  if (backend) backend.salir(st.slug);
+  st.screen = "landing"; render();
+}
+function addMemberPrompt() { showToast("Comparte el enlace para invitar a alguien"); }
+function changeMode() { st.mode = st.mode === "work" ? "break" : "work"; render(); }
+function openDetailsInfo() { st.detailsOpen = true; st.detailsTab = "ajustes"; render(); }
+function closeDetails() { st.detailsOpen = false; render(); }
+function setTabClick(tab) { st.detailsTab = tab; render(); }
+function toggleSound() { st.soundOn = !st.soundOn; localStorage.setItem("cuckoo-sound", st.soundOn ? "1" : "0"); render(); }
+function setFocusMin(v) { st.focusMin = Math.max(1, Math.min(240, Number(v) || 50)); localStorage.setItem("cuckoo-focusMin", st.focusMin); render(); }
+function setBreakMin(v) { st.breakMin = Math.max(1, Math.min(60, Number(v) || 10)); localStorage.setItem("cuckoo-breakMin", st.breakMin); render(); }
+
+function startBreathe(min) {
+  const modoInicio = st.mode;
+  st.breatheCount = 3; render();
+  clearInterval(breatheTimer);
+  breatheTimer = setInterval(() => {
+    st.breatheCount -= 1;
+    if (st.breatheCount <= 0) {
+      clearInterval(breatheTimer);
+      st.breatheCount = null;
+      if (backend) backend.iniciar(st.slug, modoInicio, min);
+      else mostrarAviso("No hay conexión con la sala todavía. Intenta de nuevo.");
+    }
+    render();
+  }, 1000);
+}
+function selectDurationClick(min) {
+  st.flashMin = min; render();
+  setTimeout(() => { st.flashMin = null; startBreathe(min); }, 260);
+}
+function openCustom() { st.customOpen = true; st.customValue = st.focusMin; render(); }
+function confirmCustom() {
+  const n = Math.max(1, Math.min(240, Number(st.customValue) || 50));
+  st.customOpen = false;
+  startBreathe(n);
+}
+function skipBreak() { st.mode = "work"; render(); }
+
+function toggle() {
+  if (!backend) { mostrarAviso("No hay conexión con la sala todavía."); return; }
+  if (restanteSegundos() !== null && restanteSegundos() <= 0) {
+    st.mode = modoEfectivo() === "work" ? "break" : "work";
+    backend.detener(st.slug);
+    return;
+  }
+  if (!st.timerFB && st.breatheCount === null) {
+    const min = st.mode === "work" ? st.focusMin : st.breakMin;
+    startBreathe(min);
+    return;
+  }
+  if (st.breatheCount !== null) return;
+  if (st.timerFB.pausado) backend.reanudar(st.slug);
+  else backend.pausar(st.slug);
+}
+function resetTimer() {
+  clearInterval(breatheTimer); st.breatheCount = null;
+  if (backend) backend.detener(st.slug);
+  render();
+}
+
+function addTask() {
+  const t = st.taskInput.trim();
+  if (!t) return;
+  st.tasks = [...st.tasks, { id: Date.now(), text: t, done: false }];
+  st.taskInput = "";
+  localStorage.setItem(`cuckoo-metas-${st.slug}`, JSON.stringify(st.tasks));
+  render();
+}
+function toggleTaskClick(id) { st.tasks = st.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t); localStorage.setItem(`cuckoo-metas-${st.slug}`, JSON.stringify(st.tasks)); render(); }
+function removeTaskClick(id) { st.tasks = st.tasks.filter(t => t.id !== id); localStorage.setItem(`cuckoo-metas-${st.slug}`, JSON.stringify(st.tasks)); render(); }
+
+function computeStreak() {
+  const mias = Object.values(st.historial[myId] || {});
+  if (!mias.length) return 0;
+  const dias = new Set(mias.map(h => h.fecha));
+  const ordenados = [...dias].sort().reverse();
+  let streak = 0, d = new Date(ordenados[0] + "T00:00:00");
+  while (dias.has(d.toISOString().slice(0, 10))) { streak++; d.setDate(d.getDate() - 1); }
+  return streak;
+}
+function choiceStyle(min, big, flashed) {
+  const size = big ? 108 : 84;
+  let style = `display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:${size}px;height:${size}px;border-radius:50%;border:4px solid rgba(255,255,255,.78);background:transparent;color:#fff;cursor:pointer;transition:.3s;font-family:inherit`;
+  if (flashed) style += ";transform:scale(1.22);box-shadow:0 0 50px rgba(255,255,255,.85);background:rgba(255,255,255,.28);border-color:#fff";
+  return style;
 }
 
 /* ========= render ========= */
-const circ = $("circProgreso");
-const RADIO = 98, PERIM = 2 * Math.PI * RADIO;
-circ.style.strokeDasharray = `${PERIM}`;
-
-function pintarTodo(){
-  const ahora = Date.now();
-  const enDescanso = timer && timer.fase === "descanso";
-  const r = timer ? Math.max(0, restante(timer, ahora)) : (Number($("minTrabajo").value)||50)*60000;
-  const total = timer ? timer.duracionMs : (Number($("minTrabajo").value)||50)*60000;
-  const avance = total > 0 ? Math.min(1, Math.max(0, 1 - r/total)) : 0;
-
-  circ.style.strokeDashoffset = String(PERIM * (1 - avance));
-  circ.classList.toggle("descanso", !!enDescanso);
-  $("etiquetaFase").classList.toggle("descanso", !!enDescanso);
-  $("etiquetaFase").textContent = !timer ? "LISTO" : (enDescanso ? "DESCANSO" : "TRABAJO");
-  $("digitos").textContent = formato(r);
-
-  const corriendo = timer && timer.corriendo && r > 0;
-  $("anilloCaja").style.setProperty("--glow", enDescanso ? "rgba(226,169,62,.38)" : "rgba(79,176,138,.35)");
-  $("anilloCaja").classList.toggle("pulso", !!corriendo);
-
-  $("subestado").textContent = !timer
-    ? "Configura tus bloques y arranca"
-    : r > 0
-      ? (timer.corriendo
-          ? `${enDescanso ? "Descansando" : "Bloque de estudio"} · ${Math.round(timer.duracionMs/60000)} min${timer.por && timer.por!=="auto" ? " · inició "+timer.por : ""}`
-          : "En pausa")
-      : "Cambiando de bloque…";
-
-  $("filaAccion").classList.toggle("oculto", !!timer);
-  $("filaEnCurso").classList.toggle("oculto", !timer);
-  $("panelAjustes").classList.toggle("oculto", !!timer);
-  $("btnPausar").classList.toggle("oculto", !(timer && timer.corriendo));
-  $("btnReanudar").classList.toggle("oculto", !(timer && !timer.corriendo));
-  $("btnSaltar").classList.toggle("oculto", !timer);
-
-  procesarTransicion(ahora);
+function render() {
+  revisarFin();
+  if (st.screen === "landing") return renderLanding();
+  if (st.screen === "profile") return renderProfile();
+  if (st.screen === "room") return renderRoom();
 }
 
-function pintarGente(entradas){
-  const lista = entradas.map(([id,p]) => ({ id, ...p }))
-    .sort((a,b) => (b.bloques||0) - (a.bloques||0));
-  $("conteoGente").textContent = lista.length;
-  $("listaGente").innerHTML = lista.length ? lista.map(p => `
-    <div class="persona">
-      <div class="avatar" style="background:${colorDeNombre(p.nombre)}">${iniciales(p.nombre)}</div>
-      <div class="info">
-        <div class="n ${p.id===miId?"yo":""}">${escapar(p.nombre||"Sin nombre")}</div>
-      </div>
-      <div class="d">${p.bloques||0} bloques · ${p.minutos||0} min</div>
-    </div>`).join("") : `<div class="feed-vacio">Todavía nadie más aquí.</div>`;
+function renderLanding() {
+  const bubbleDefs = [
+    { left: 0, top: 70, size: 170, bg: "linear-gradient(145deg,#08c7ed 55%,#ff3e91 55%)", emoji: "🧑\u200d💻" },
+    { left: 145, top: 45, size: 135, bg: "linear-gradient(145deg,#21c980,#139eca)", emoji: "📚" },
+    { left: 265, top: 70, size: 145, bg: "linear-gradient(145deg,#03d0ea,#4d64d5)", emoji: "👩\u200d⚕️" },
+    { left: 70, top: 230, size: 130, bg: "linear-gradient(145deg,#ffb731,#ef5f3f)", emoji: "☕" },
+    { left: 200, top: 210, size: 168, bg: "linear-gradient(145deg,#3c246f,#7159df)", emoji: "🧠" },
+  ];
+  root.innerHTML = `
+<div style="min-height:100vh;position:relative;overflow-x:hidden;font-family:'Inter',ui-sans-serif,system-ui,sans-serif;color:#fff;background:linear-gradient(135deg,#5366da,#7060ed);background-size:200% 200%;animation:gradientShift 16s ease infinite">
+<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:50px;position:relative;z-index:2;animation:fadeUp .5s ease">
+<div style="position:absolute;top:26px;left:34px;display:flex;align-items:center;gap:8px;font-family:'Manrope',sans-serif;font-weight:800;font-size:1.2rem;letter-spacing:.04em">
+<span style="display:flex;align-items:center">CUCKO<span style="display:inline-block;width:11px;height:11px;border:3px solid currentColor;border-radius:50%;margin-left:2px"></span></span>
+<span style="font-size:.62rem;font-weight:800;letter-spacing:.16em;background:rgba(255,255,255,.16);padding:4px 8px;border-radius:20px">ENARM</span>
+</div>
+<div style="width:min(1120px,100%);display:grid;grid-template-columns:.9fr 1.1fr;align-items:center;gap:70px">
+<div style="height:440px;position:relative" aria-hidden="true">
+${bubbleDefs.map((b, i) => `<div style="position:absolute;left:${b.left}px;top:${b.top}px;width:${b.size}px;height:${b.size}px;border-radius:50%;background:${b.bg};display:grid;place-items:center;box-shadow:0 28px 60px rgba(21,25,73,.28);border:1px solid rgba(255,255,255,.2);animation:floatYNormal ${7+i*0.6}s ease-in-out infinite;animation-delay:${i*0.3}s"><b style="font-size:3rem;filter:drop-shadow(0 8px 10px rgba(0,0,0,.15))">${b.emoji}</b></div>`).join("")}
+</div>
+<div>
+<h1 style="font-family:'Manrope',sans-serif;font-size:clamp(2.4rem,5vw,4.4rem);letter-spacing:-.03em;line-height:1;margin:0 0 14px;font-weight:800">Bienvenido a Cuckoo ENARM</h1>
+<p style="font-size:1.1rem;color:rgba(255,255,255,.72);margin:0 0 38px;max-width:46ch">Un temporizador de productividad para estudiar el ENARM con amigos.</p>
+<div style="font-size:.66rem;font-weight:800;letter-spacing:.35em;text-transform:uppercase;margin-bottom:11px;color:rgba(255,255,255,.85)">Crea un enlace compartible</div>
+<div style="display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.7);padding:0 0 8px;font-size:1.25rem">
+<span style="color:rgba(255,255,255,.72);white-space:nowrap">cuckoo.enarm/</span>
+<input id="in-slug" value="${esc(st.slug)}" maxlength="20" style="width:100%;border:0;background:transparent;color:#37ffb1;outline:0;font-size:inherit;padding:0 5px;font-family:inherit">
+</div>
+<div style="display:flex;justify-content:flex-end;gap:12px;margin-top:16px">
+<button id="btn-saltar" style="border:0;color:#fff;cursor:pointer;background:rgba(31,50,139,.28);padding:10px 22px;border-radius:8px;font-family:inherit;font-size:.95rem;transition:.2s">Saltar</button>
+<button id="btn-continuar" aria-label="Continuar" style="border:0;color:#fff;cursor:pointer;width:78px;height:42px;background:rgba(31,50,139,.38);font-size:1.5rem;border-radius:8px;transition:.25s">⟶</button>
+</div>
+</div>
+</div>
+</div>
+</div>`;
+  document.getElementById("in-slug").addEventListener("input", e => st.slug = e.target.value);
+  document.getElementById("btn-saltar").addEventListener("click", goProfileScreen);
+  document.getElementById("btn-continuar").addEventListener("click", goProfileScreen);
 }
 
-const ETIQUETAS_EVENTO = {
-  union: (n) => `<b>${escapar(n)}</b> se unió a la sala`,
-  inicio: (n,e) => `<b>${escapar(n)}</b> inició un bloque de ${e.min||""} min`,
-  bloque_ok: (n,e) => `<b>${escapar(n)}</b> completó un bloque de ${e.min||""} min`,
-  descanso_ok: (n) => `<b>${escapar(n)}</b> terminó su descanso`,
-  detenido: (n) => `<b>${escapar(n)}</b> detuvo la sesión`,
-};
-function pintarFeed(eventos){
-  if(!eventos.length){ $("feed").innerHTML = `<div class="feed-vacio">Sin actividad todavía.</div>`; return; }
-  $("feed").innerHTML = eventos.slice(0,6).map(e => {
-    const f = ETIQUETAS_EVENTO[e.tipo];
-    return `<div class="feed-item">${f ? f(e.nombre, e) : escapar(e.tipo)}</div>`;
-  }).join("");
-}
-
-/* ========= transición automática ========= */
-function procesarTransicion(ahora){
-  if(!timer || !timer.corriendo) return;
-  const r = restante(timer, ahora);
-  if(r > 0) return;
-  const clave = `${timer.fase}:${timer.iniciadoEn}`;
-  if(procesadoClave === clave) return;
-  procesadoClave = clave;
-
-  const minT = timer.minTrabajoMin || 50, minD = timer.minDescansoMin || 10;
-  const eraTrabajo = timer.fase !== "descanso";
-
-  if(sonidoOn){ eraTrabajo ? campanaFinTrabajo() : campanaFinDescanso(); }
-  document.getElementById("anilloCaja").classList.remove("flash");
-  void document.getElementById("anilloCaja").offsetWidth;
-  document.getElementById("anilloCaja").classList.add("flash");
-
-  // crédito personal — solo si mi pestaña estaba abierta para notarlo
-  if(eraTrabajo){
-    backend.latido({ bloques: (misGenteLocal.bloques||0)+1, minutos: (misGenteLocal.minutos||0)+minT, nombre: miNombre });
-    misGenteLocal.bloques = (misGenteLocal.bloques||0)+1;
-    misGenteLocal.minutos = (misGenteLocal.minutos||0)+minT;
-    backend.evento("bloque_ok", { min: minT });
-  } else {
-    backend.evento("descanso_ok", {});
-  }
-
-  if(!timer.autoLoop){
-    backend.guardarTimer({ ...timer, corriendo:false, pausadoEn:0 });
-    return;
-  }
-  const siguienteFase = eraTrabajo ? "descanso" : "trabajo";
-  const dur = (siguienteFase === "descanso" ? minD : minT) * 60000;
-  backend.guardarTimer({
-    fase: siguienteFase, duracionMs: dur, iniciadoEn: Date.now(), pausadoEn: dur,
-    corriendo: true, por: "auto", minTrabajoMin: minT, minDescansoMin: minD, autoLoop: true
+function renderProfile() {
+  root.innerHTML = `
+<div style="min-height:100vh;position:relative;overflow-x:hidden;font-family:'Inter',ui-sans-serif,system-ui,sans-serif;color:#fff;background:linear-gradient(135deg,#5366da,#7060ed);background-size:200% 200%;animation:gradientShift 16s ease infinite">
+<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:30px;position:relative;z-index:2">
+<div style="width:min(430px,100%);background:rgba(40,36,121,.32);border:1px solid rgba(255,255,255,.24);backdrop-filter:blur(20px);padding:34px;border-radius:16px;box-shadow:0 30px 70px rgba(21,27,84,.35);animation:popIn .4s ease">
+<div style="display:flex;align-items:center;gap:8px;font-family:'Manrope',sans-serif;font-weight:800;font-size:1.1rem;margin-bottom:28px">CUCKO<span style="display:inline-block;width:11px;height:11px;border:3px solid currentColor;border-radius:50%;margin-left:2px"></span></div>
+<h2 style="margin:0 0 8px;font-size:2rem;font-family:'Manrope',sans-serif">Crea tu perfil</h2>
+<p style="color:rgba(255,255,255,.7);margin:0">Así te verán tus compañeros dentro de esta sala.</p>
+<input id="in-nombre" placeholder="Tu nombre" maxlength="22" value="${esc(st.name)}" style="width:100%;margin:16px 0;padding:14px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);color:#fff;outline:0;border-radius:10px;font-family:inherit;font-size:1rem">
+<div id="caras" style="display:flex;gap:10px;margin:4px 0 22px;flex-wrap:wrap"></div>
+<button id="btn-entrar" style="width:100%;border:0;background:#fff;color:#5360d8;padding:15px 22px;border-radius:10px;font-weight:800;cursor:pointer;font-family:inherit;font-size:1rem;transition:.2s">Entrar a la sala →</button>
+</div>
+</div>
+</div>`;
+  const faceBase = "width:48px;height:48px;border-radius:50%;border:2px solid transparent;background:#fff;font-size:1.35rem;cursor:pointer;transition:.2s";
+  const caras = document.getElementById("caras");
+  FACES.forEach(f => {
+    const b = document.createElement("button");
+    const sel = f === st.face;
+    b.style.cssText = faceBase + (sel ? ";border-color:#41ffb7;box-shadow:0 0 0 3px rgba(65,255,183,.25);transform:scale(1.08)" : "");
+    b.textContent = f;
+    b.addEventListener("click", () => { st.face = f; render(); });
+    caras.appendChild(b);
   });
-  if(siguienteFase === "trabajo") backend.evento("inicio", { min: minT });
+  document.getElementById("in-nombre").addEventListener("input", e => st.name = e.target.value);
+  document.getElementById("btn-entrar").addEventListener("click", enterRoom);
 }
 
-/* ========= acciones ========= */
-let misGenteLocal = { bloques:0, minutos:0 };
+function renderRoom() {
+  const modo = modoEfectivo();
+  const restante = restanteSegundos();
+  const hayTimer = !!st.timerFB;
+  const terminado = hayTimer && restante <= 0;
+  const respirando = st.breatheCount !== null;
+  const enPick = !hayTimer && !respirando;
+  const enTimerFase = hayTimer && !terminado && !respirando;
+  const running = enTimerFase && !st.timerFB.pausado;
 
-function iniciar(){
-  const minT = Math.max(1, Number($("minTrabajo").value) || 50);
-  const minD = Math.max(1, Number($("minDescanso").value) || 10);
-  const loop = $("autoLoop").checked;
-  procesadoClave = null;
-  backend.guardarTimer({
-    fase: "trabajo", duracionMs: minT*60000, iniciadoEn: Date.now(), pausadoEn: minT*60000,
-    corriendo: true, por: miNombre, minTrabajoMin: minT, minDescansoMin: minD, autoLoop: loop
-  });
-  backend.evento("inicio", { min: minT });
-  if(!enVivo) mostrarAviso("Copia el link y pásalo — quien lo abra ve este mismo bloque.");
+  const roomGrad = terminado ? "linear-gradient(135deg,#ff2b96,#ff2586)" : (modo === "break" ? "linear-gradient(135deg,#02bde8,#08aee7)" : "linear-gradient(135deg,#5366da,#7060ed)");
+  const ringInnerBg = terminado ? "#ff278f" : (modo === "break" ? "#06b8ed" : "#6460ec");
+  const ringPercent = hayTimer ? Math.round(((st.timerFB.duracionMs / 1000 - restante) / (st.timerFB.duracionMs / 1000)) * 100) : 0;
+  const modeTitleText = modo === "work" ? "TIEMPO DE ENFOQUE" : "TIEMPO DE DESCANSO";
+  const pauseLabel = !running ? "PAUSADO" : (modo === "work" ? "ENFOCADO" : "DESCANSANDO");
+  const startLabel = terminado ? "SIGUIENTE" : (running ? "PAUSA" : "INICIAR");
+  const finishText = modo === "work" ? "¡Sesión de enfoque terminada! 🎉" : "¡Descanso terminado! 🎉";
+  const noticeText = terminado ? `¡Tu sesión de ${modo === "work" ? "enfoque" : "descanso"} terminó!` : "Te uniste a esta Cuckoo justo ahora";
+  const breatheCaption = ({ 3: "Prepárate", 2: "Respira", 1: "Silencio" })[st.breatheCount] || "Silencio";
+
+  // gente REAL de Firebase — sin perfiles inventados
+  const allMembers = Object.values(st.gente);
+  const hoy = hoyISO();
+  const planos = [];
+  for (const [pid, entradas] of Object.entries(st.historial)) for (const e of Object.values(entradas || {})) planos.push({ pid, ...e });
+  const trabajoHoy = planos.filter(h => h.fecha === hoy && h.modo === "work");
+  const blocksToday = trabajoHoy.length;
+  const minutesToday = trabajoHoy.reduce((s, h) => s + h.minutos, 0);
+  const streak = computeStreak();
+  const memberStats = Object.entries(st.gente).map(([pid, p]) => ({
+    face: p.cara, name: p.nombre,
+    label: planos.filter(h => h.pid === pid && h.fecha === hoy).reduce((s, h) => s + h.minutos, 0) + " min",
+  }));
+
+  const workChoices = [25, 50, 90], breakChoices = [5, 10, 15];
+
+  root.innerHTML = `
+<div style="min-height:100vh;position:relative;overflow-x:hidden;font-family:'Inter',ui-sans-serif,system-ui,sans-serif;color:#fff;background:${roomGrad};background-size:200% 200%;animation:gradientShift 16s ease infinite">
+<div style="position:fixed;z-index:50;bottom:25px;left:50%;background:#fff;color:#3d48b5;padding:12px 18px;border-radius:8px;font-weight:700;font-size:.9rem;${st.toastShow ? "opacity:1;transform:translate(-50%,0);transition:.3s" : "opacity:0;transform:translate(-50%,16px);transition:.3s;pointer-events:none"}">${esc(st.toastMsg)}</div>
+
+<div style="position:relative;z-index:2">
+<div style="position:fixed;top:26px;left:34px;display:flex;align-items:center;gap:8px;font-family:'Manrope',sans-serif;font-weight:800;font-size:1.15rem;letter-spacing:.04em;z-index:5">
+<span style="display:flex;align-items:center">CUCKO<span style="display:inline-block;width:10px;height:10px;border:3px solid currentColor;border-radius:50%;margin-left:2px"></span></span>
+</div>
+<div style="position:fixed;top:24px;right:30px;display:flex;gap:14px;z-index:5;background:rgba(0,0,0,.14);padding:10px 14px;border-radius:30px;backdrop-filter:blur(6px)">
+<button id="btn-modo" title="Cambiar modo" style="border:0;background:transparent;color:rgba(255,255,255,.75);font-size:1.3rem;cursor:pointer;width:32px;height:32px;transition:.2s">⌛</button>
+<button id="btn-ajustes" title="Ajustes" style="border:0;background:transparent;color:rgba(255,255,255,.75);font-size:1.3rem;cursor:pointer;width:32px;height:32px;transition:.2s">⚙</button>
+<button id="btn-salir" title="Salir" style="border:0;background:transparent;color:rgba(255,255,255,.75);font-size:1.3rem;cursor:pointer;width:32px;height:32px;transition:.2s">↪</button>
+</div>
+
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:100px 24px 40px;text-align:center">
+<div style="font-size:.95rem;letter-spacing:.5em;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:50px">${modeTitleText}</div>
+
+<div style="min-height:280px;display:grid;place-items:center;position:relative;width:100%">
+
+${enPick ? `
+<div style="display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap;max-width:420px;animation:popIn .35s ease">
+${modo === "work" ? `
+${workChoices.map(min => `<button data-min="${min}" class="btn-dur" style="${choiceStyle(min, min === 50, st.flashMin === min)}"><span style="font-size:${min===50?"2rem":"1.2rem"};font-weight:600">${min}</span><span style="font-size:.6rem;opacity:.75;letter-spacing:.08em;text-transform:uppercase">min</span></button>`).join("")}
+${st.customOpen ? `
+<div style="display:flex;gap:8px;align-items:center">
+<input id="in-custom" type="number" min="1" max="240" value="${st.customValue}" style="width:80px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.12);color:#fff;font-family:inherit;font-size:1rem">
+<button id="btn-custom-ok" style="width:56px;height:56px;border-radius:50%;border:4px solid rgba(255,255,255,.78);background:transparent;color:#fff;font-size:1.2rem;cursor:pointer">✓</button>
+</div>` : `
+<button id="btn-custom-abrir" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:78px;height:78px;border-radius:50%;border:4px solid rgba(255,255,255,.78);background:transparent;color:#fff;font-size:1.5rem;cursor:pointer;transition:.3s;font-family:inherit">+</button>`}
+` : `
+${breakChoices.map(min => `<button data-min="${min}" class="btn-dur" style="${choiceStyle(min, min === 10, st.flashMin === min)}"><span style="font-size:${min===10?"2rem":"1.2rem"};font-weight:600">${min}</span><span style="font-size:.6rem;opacity:.75;letter-spacing:.08em;text-transform:uppercase">min</span></button>`).join("")}
+<button id="btn-saltar-descanso" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:78px;height:78px;border-radius:50%;border:4px solid rgba(255,255,255,.78);background:transparent;color:#fff;font-size:.62rem;font-weight:700;cursor:pointer;transition:.3s;line-height:1.3;font-family:inherit">SALTAR<br>DESCANSO</button>`}
+</div>` : ""}
+
+${respirando ? `
+<div style="display:flex;flex-direction:column;align-items:center;gap:26px;animation:popIn .4s ease">
+<div style="width:190px;height:190px;border-radius:50%;border:5px solid rgba(255,255,255,.85);display:grid;place-items:center;animation:breathePulse 1s ease-in-out infinite">
+<span style="font-size:4rem;font-weight:300">${st.breatheCount}</span>
+</div>
+<div style="font-size:1rem;letter-spacing:.4em;text-transform:uppercase;font-weight:700;color:rgba(255,255,255,.9)">${breatheCaption}</div>
+</div>` : ""}
+
+${enTimerFase ? `
+<div id="anillo" style="width:260px;height:260px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#fff calc(${ringPercent}*1%),rgba(255,255,255,.22) 0);position:relative;animation:pulseGlow 6.5s ease-in-out infinite">
+<div style="position:absolute;inset:6px;border-radius:50%;transition:background .5s;background:${ringInnerBg}"></div>
+<div style="position:relative;z-index:1;text-align:center">
+<div id="digits" style="font-size:3.4rem;font-weight:300;letter-spacing:.01em;font-variant-numeric:tabular-nums">${fmt(restante)}</div>
+<div style="font-size:.68rem;letter-spacing:.5em;margin-top:22px;color:rgba(255,255,255,.72)">${pauseLabel}</div>
+</div>
+</div>` : ""}
+
+${terminado ? `
+<div style="position:relative;width:100%;max-width:400px;height:260px;display:grid;place-items:center">
+<div style="position:absolute;inset:0;pointer-events:none;overflow:hidden">
+<span style="position:absolute;left:15%;top:0;font-size:2rem;animation:confettiFall 2.2s ease-in infinite">🎉</span>
+<span style="position:absolute;left:45%;top:0;font-size:1.7rem;animation:confettiFall 2.2s ease-in infinite;animation-delay:.3s">✨</span>
+<span style="position:absolute;left:70%;top:0;font-size:1.9rem;animation:confettiFall 2.2s ease-in infinite;animation-delay:.6s">🎉</span>
+<span style="position:absolute;left:85%;top:0;font-size:1.6rem;animation:confettiFall 2.2s ease-in infinite;animation-delay:.15s">✨</span>
+</div>
+<div style="background:rgba(223,31,114,.32);padding:28px 34px;border-radius:16px;font-size:1.4rem;text-align:center;font-weight:600">${finishText}</div>
+</div>` : ""}
+
+</div>
+<div style="display:flex;justify-content:center;gap:16px;margin-top:44px">
+<button id="btn-toggle" style="border:0;background:rgba(255,255,255,.16);color:#fff;letter-spacing:.22em;font-size:.78rem;cursor:pointer;font-weight:700;padding:14px 28px;border-radius:30px;transition:.2s">${startLabel}</button>
+<button id="btn-reset" style="border:0;background:transparent;color:rgba(255,255,255,.8);letter-spacing:.22em;font-size:.78rem;cursor:pointer;font-weight:700;padding:14px 28px">REINICIAR</button>
+</div>
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:60px;color:rgba(255,255,255,.6);font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;animation:bounceHint 1.8s ease-in-out infinite">
+<span>Desliza para ver estadísticas</span>
+<span style="font-size:1.1rem">⌄</span>
+</div>
+</div>
+
+<div style="display:flex;justify-content:center;padding:20px 24px 10px">
+<div style="width:min(560px,100%);display:flex;flex-direction:column;align-items:center;gap:14px">
+<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+${allMembers.map(m => `<span title="${esc(m.nombre)}" style="width:46px;height:46px;border-radius:50%;background:#fff;color:#25304a;display:grid;place-items:center;font-size:1.3rem;border:3px solid rgba(255,255,255,.3);box-shadow:0 3px 10px rgba(21,25,70,.15)">${esc(m.cara)}</span>`).join("")}
+<button id="btn-invitar" style="width:46px;height:46px;border-radius:50%;background:transparent;color:rgba(255,255,255,.65);border:1px dashed rgba(255,255,255,.55);cursor:pointer;font-size:1.2rem">＋</button>
+</div>
+<div style="color:rgba(255,255,255,.75);font-size:.95rem">${allMembers.length} integrante(s) en esta Cuckoo.</div>
+<div style="display:flex;gap:8px;align-items:center;font-size:.72rem;color:rgba(255,255,255,.72)">
+<span style="width:26px;height:26px;border-radius:50%;background:#fff;color:#5061d8;display:grid;place-items:center;flex-shrink:0">🌎</span>
+<span>${esc(noticeText)}</span>
+</div>
+</div>
+</div>
+
+<div style="display:flex;justify-content:center;padding:40px 24px 100px">
+<div style="width:min(720px,100%)">
+<h3 style="margin:0 0 20px;font-family:'Manrope',sans-serif;font-size:1.3rem;font-weight:800;text-align:center">Estadísticas de la sala</h3>
+<div style="display:flex;gap:14px;margin-bottom:26px;flex-wrap:wrap">
+<div style="flex:1;min-width:140px;background:rgba(255,255,255,.1);border-radius:16px;padding:22px;text-align:center">
+<div style="font-size:2rem;font-weight:800">${blocksToday}</div>
+<div style="font-size:.72rem;color:rgba(255,255,255,.65);margin-top:4px;letter-spacing:.05em;text-transform:uppercase">bloques hoy</div>
+</div>
+<div style="flex:1;min-width:140px;background:rgba(255,255,255,.1);border-radius:16px;padding:22px;text-align:center">
+<div style="font-size:2rem;font-weight:800">${minutesToday}</div>
+<div style="font-size:.72rem;color:rgba(255,255,255,.65);margin-top:4px;letter-spacing:.05em;text-transform:uppercase">min hoy</div>
+</div>
+<div style="flex:1;min-width:140px;background:rgba(255,255,255,.1);border-radius:16px;padding:22px;text-align:center">
+<div style="font-size:2rem;font-weight:800">🔥${streak}</div>
+<div style="font-size:.72rem;color:rgba(255,255,255,.65);margin-top:4px;letter-spacing:.05em;text-transform:uppercase">racha</div>
+</div>
+</div>
+<div style="font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:10px">Por integrante</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+${memberStats.length ? memberStats.map(ms => `
+<div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.08);border-radius:12px;padding:12px 16px">
+<span style="width:36px;height:36px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:1.1rem;flex-shrink:0">${esc(ms.face)}</span>
+<span style="flex:1;font-size:.95rem">${esc(ms.name)}</span>
+<span style="font-size:.88rem;color:rgba(255,255,255,.7)">${ms.label}</span>
+</div>`).join("") : `<div style="color:rgba(255,255,255,.5);font-size:.85rem">Nadie ha completado un bloque todavía.</div>`}
+</div>
+</div>
+</div>
+
+${st.detailsOpen ? `
+<div style="position:fixed;inset:0;background:rgba(25,25,93,.97);z-index:20;padding:40px 26px;overflow:auto;text-align:left;animation:fadeUp .3s ease">
+<div style="width:min(480px,100%);margin:0 auto">
+<button id="btn-cerrar-ajustes" style="float:right;border:0;background:transparent;color:#fff;font-size:1.6rem;cursor:pointer">×</button>
+<div style="display:flex;gap:8px;margin:6px 0 24px;clear:both">
+<button data-tab="ajustes" class="tab-btn" style="padding:8px 14px;border-radius:20px;border:0;cursor:pointer;font-size:.75rem;font-weight:700;font-family:inherit;background:${st.detailsTab==="ajustes"?"#fff":"rgba(255,255,255,.12)"};color:${st.detailsTab==="ajustes"?"#5360d8":"#fff"}">Ajustes</button>
+<button data-tab="metas" class="tab-btn" style="padding:8px 14px;border-radius:20px;border:0;cursor:pointer;font-size:.75rem;font-weight:700;font-family:inherit;background:${st.detailsTab==="metas"?"#fff":"rgba(255,255,255,.12)"};color:${st.detailsTab==="metas"?"#5360d8":"#fff"}">Metas</button>
+</div>
+
+${st.detailsTab === "ajustes" ? `
+<label style="display:block;font-size:.7rem;margin-top:8px">Estudio predeterminado (min)
+<input id="in-focus" type="number" min="1" max="240" value="${st.focusMin}" style="width:100%;padding:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);color:#fff;margin-top:5px;border-radius:8px;font-family:inherit">
+</label>
+<label style="display:block;font-size:.7rem;margin-top:14px">Descanso predeterminado (min)
+<input id="in-break" type="number" min="1" max="60" value="${st.breakMin}" style="width:100%;padding:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);color:#fff;margin-top:5px;border-radius:8px;font-family:inherit">
+</label>
+<button id="btn-sonido" style="width:100%;margin-top:10px;border:1px solid rgba(255,255,255,.34);background:transparent;color:#fff;padding:13px;border-radius:8px;font-weight:700;cursor:pointer">${st.soundOn ? "🔔 Sonido y notificaciones activadas" : "🔕 Sonido y notificaciones desactivadas"}</button>
+` : `
+<p style="color:rgba(255,255,255,.7);margin-top:8px">Anota lo que quieres lograr mientras estudias.</p>
+<div style="display:flex;gap:8px;margin:14px 0">
+<input id="in-tarea" placeholder="Nueva meta..." value="${esc(st.taskInput)}" style="flex:1;padding:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);color:#fff;border-radius:8px;font-family:inherit">
+<button id="btn-agregar-tarea" style="border:0;background:#fff;color:#5360d8;padding:0 18px;border-radius:8px;font-weight:800;cursor:pointer">＋</button>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+${st.tasks.map(t => `
+<div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.08);padding:10px 12px;border-radius:8px">
+<button data-id="${t.id}" class="btn-check" style="border:0;background:transparent;font-size:1.1rem;cursor:pointer;color:#fff">${t.done ? "✅" : "○"}</button>
+<span style="flex:1;${t.done ? "text-decoration:line-through;opacity:.55" : ""}">${esc(t.text)}</span>
+<button data-id="${t.id}" class="btn-quitar" style="border:0;background:transparent;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.1rem">×</button>
+</div>`).join("")}
+</div>
+${st.tasks.length === 0 ? `<p style="color:rgba(255,255,255,.45);font-style:italic;margin-top:14px">Aún no hay metas. Agrega la primera.</p>` : ""}
+`}
+</div>
+</div>` : ""}
+</div>
+</div>`;
+
+  document.querySelectorAll(".btn-dur").forEach(b => b.addEventListener("click", () => selectDurationClick(Number(b.dataset.min))));
+  const bca = document.getElementById("btn-custom-abrir"); if (bca) bca.addEventListener("click", openCustom);
+  const bco = document.getElementById("btn-custom-ok"); if (bco) bco.addEventListener("click", () => { st.customValue = document.getElementById("in-custom").value; confirmCustom(); });
+  const bsd = document.getElementById("btn-saltar-descanso"); if (bsd) bsd.addEventListener("click", skipBreak);
+  document.getElementById("btn-toggle").addEventListener("click", toggle);
+  document.getElementById("btn-reset").addEventListener("click", resetTimer);
+  document.getElementById("btn-modo").addEventListener("click", changeMode);
+  document.getElementById("btn-ajustes").addEventListener("click", openDetailsInfo);
+  document.getElementById("btn-salir").addEventListener("click", goLandingScreen);
+  document.getElementById("btn-invitar").addEventListener("click", addMemberPrompt);
+  const bce = document.getElementById("btn-cerrar-ajustes"); if (bce) bce.addEventListener("click", closeDetails);
+  document.querySelectorAll(".tab-btn").forEach(b => b.addEventListener("click", () => setTabClick(b.dataset.tab)));
+  const inFocus = document.getElementById("in-focus"); if (inFocus) inFocus.addEventListener("change", e => setFocusMin(e.target.value));
+  const inBreak = document.getElementById("in-break"); if (inBreak) inBreak.addEventListener("change", e => setBreakMin(e.target.value));
+  const bsonido = document.getElementById("btn-sonido"); if (bsonido) bsonido.addEventListener("click", toggleSound);
+  const inTarea = document.getElementById("in-tarea");
+  if (inTarea) { inTarea.addEventListener("input", e => st.taskInput = e.target.value); inTarea.addEventListener("keydown", e => { if (e.key === "Enter") addTask(); }); }
+  const bat = document.getElementById("btn-agregar-tarea"); if (bat) bat.addEventListener("click", addTask);
+  document.querySelectorAll(".btn-check").forEach(b => b.addEventListener("click", () => toggleTaskClick(Number(b.dataset.id))));
+  document.querySelectorAll(".btn-quitar").forEach(b => b.addEventListener("click", () => removeTaskClick(Number(b.dataset.id))));
 }
-function pausar(){
-  if(!timer || !timer.corriendo) return;
-  backend.guardarTimer({ ...timer, corriendo:false, pausadoEn: Math.max(0, restante(timer, Date.now())) });
-}
-function reanudar(){
-  if(!timer || timer.corriendo) return;
-  backend.guardarTimer({ ...timer, corriendo:true, iniciadoEn: Date.now() - (timer.duracionMs - timer.pausadoEn) });
-}
-function saltar(){
-  if(!timer) return;
-  const minT = timer.minTrabajoMin || 50, minD = timer.minDescansoMin || 10;
-  const sig = timer.fase === "descanso" ? "trabajo" : "descanso";
-  const dur = (sig === "descanso" ? minD : minT) * 60000;
-  procesadoClave = null;
-  backend.guardarTimer({ ...timer, fase: sig, duracionMs: dur, iniciadoEn: Date.now(), pausadoEn: dur, corriendo:true, por: miNombre });
-}
-function detener(){
-  if(!timer) return;
-  backend.guardarTimer(null);
-  backend.evento("detenido", {});
-  mostrarAviso("Sesión detenida. Ajusta tus tiempos y arranca cuando quieras.");
-}
-function mostrarAviso(txt){
-  $("aviso").textContent = txt;
-  $("aviso").classList.remove("oculto");
-  clearTimeout(mostrarAviso._t);
-  mostrarAviso._t = setTimeout(() => $("aviso").classList.add("oculto"), 6000);
+
+/* ========= "tick" ligero: solo toca los números y el anillo, nunca reconstruye la pantalla ========= */
+function tick() {
+  if (st.screen !== "room" || st.breatheCount !== null) return;
+  const t = st.timerFB;
+  if (!t || t.pausado) return;
+  const restante = restanteSegundos();
+  if (restante <= 0) { render(); return; } // el bloque terminó: aquí sí hace falta reconstruir (confeti, crédito)
+  const digits = document.getElementById("digits");
+  const anillo = document.getElementById("anillo");
+  if (digits) digits.textContent = fmt(restante);
+  if (anillo) {
+    const total = t.duracionMs / 1000;
+    const pct = Math.round(((total - restante) / total) * 100);
+    anillo.style.background = `conic-gradient(#fff calc(${pct}*1%),rgba(255,255,255,.22) 0)`;
+  }
 }
 
 /* ========= arranque ========= */
-async function entrarSala(){
-  $("panelEntrada").classList.add("oculto");
-  $("app").classList.remove("oculto");
-  miColor = colorDeNombre(miNombre);
-  $("tituloSala").textContent = enVivo ? sala : "Bloque";
-  $("pieIzq").textContent = enVivo ? "Sala en vivo · loop automático activo" : "Modo link · sin descansos automáticos entre pestañas";
-
-  if(enVivo){
-    if(!params.get("sala")) history.replaceState(null, "", `?sala=${sala}`);
-    try{
-      backend = await crearBackendFirebase();
-      backend.escuchar(
-        (t) => { timer = t; pintarTodo(); },
-        (entradas) => pintarGente(entradas),
-        (eventos) => pintarFeed(eventos)
-      );
-      backend.latido({ nombre: miNombre, bloques:0, minutos:0 });
-      const yaAnuncio = sessionStorage.getItem(`union-${sala}`);
-      if(!yaAnuncio){ backend.evento("union", {}); sessionStorage.setItem(`union-${sala}`, "1"); }
-      setInterval(() => backend.latido({ nombre: miNombre }), 25000);
-    }catch(e){
-      backend = crearBackendLocal();
-      backend.escuchar((t) => { timer = t; pintarTodo(); });
-      mostrarAviso("No se pudo conectar a la sala en vivo. Funcionando en modo link.");
-    }
-  }else{
-    backend = crearBackendLocal();
-    backend.escuchar((t) => { timer = t; pintarTodo(); });
-  }
-
-  setInterval(pintarTodo, 250);
-  pintarTodo();
-}
-
-$("campoNombre").value = miNombre;
-$("btnUnirse").addEventListener("click", () => {
-  const n = $("campoNombre").value.trim().slice(0,18);
-  if(!n) return;
-  miNombre = n;
-  localStorage.setItem("nombre-sala", n);
-  entrarSala();
-});
-$("campoNombre").addEventListener("keydown", (e) => { if(e.key === "Enter") $("btnUnirse").click(); });
-
-$("btnLink").addEventListener("click", async () => {
-  try{ await navigator.clipboard.writeText(location.href); mostrarAviso("Link copiado. Pásalo al grupo."); }
-  catch{ mostrarAviso("Copia la dirección de la barra del navegador."); }
-});
-$("btnSonido").addEventListener("click", async () => {
-  sonidoOn = await activarSonido();
-  $("btnSonido").textContent = sonidoOn ? "Probar campana" : "Activar sonido";
-  $("pieDer").textContent = sonidoOn ? "Campana activa en este dispositivo" : "Sonido bloqueado por el navegador";
-  if(sonidoOn) campanaFinDescanso();
-});
-$("btnIniciar").addEventListener("click", iniciar);
-$("btnPausar").addEventListener("click", pausar);
-$("btnReanudar").addEventListener("click", reanudar);
-$("btnSaltar").addEventListener("click", saltar);
-$("btnDetener").addEventListener("click", detener);
-
-if(miNombre) entrarSala();
+render();
+clearInterval(renderInterval);
+renderInterval = setInterval(tick, 250);
 </script>
 </body>
 </html>
