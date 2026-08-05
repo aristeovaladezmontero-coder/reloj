@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Temporizador de sala</title>
+<style>
+  :root{
+    --bg:#0C1917; --panel:#132523; --panel-up:#18302C; --line:#24443E;
+    --verde:#4FB08A; --ambar:#E0A83C; --texto:#E6F0EC; --tenue:#7E9A93;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--texto);
+    font-family:var(--sans); -webkit-font-smoothing:antialiased;
+    padding:22px 16px 40px;
+  }
+  .wrap{max-width:720px;margin:0 auto}
+  .eyebrow{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--tenue);margin-bottom:10px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;transition:border-color .2s ease}
+  .panel.alerta{border-color:var(--ambar)}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .sala{font-family:var(--mono);font-size:30px;letter-spacing:8px;line-height:1}
+  .digitos{
+    font-family:var(--mono); font-size:clamp(58px,17vw,132px); line-height:1;
+    font-variant-numeric:tabular-nums; text-align:center; color:var(--verde);
+  }
+  .digitos.fin{color:var(--ambar)}
+  .barra{height:2px;background:var(--line);margin:26px 0 14px;border-radius:2px;overflow:hidden}
+  .barra > div{height:100%;width:0%;background:var(--verde);transition:width .25s linear}
+  .barra.fin > div{background:var(--ambar)}
+  .estado{font-size:13px;color:var(--tenue);text-align:center;min-height:18px}
+  .fila{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+  button{
+    font-family:var(--sans);font-size:14px;font-weight:500;color:var(--texto);
+    background:transparent;border:1px solid var(--line);border-radius:8px;
+    padding:10px 18px;cursor:pointer;transition:background .12s ease,border-color .12s ease;
+  }
+  button:hover{background:var(--panel-up)}
+  button.fuerte{background:var(--verde);border-color:var(--verde);color:#06211A;font-weight:600}
+  button.fuerte:hover{filter:brightness(1.08);background:var(--verde)}
+  button.tenue{border-color:transparent;color:var(--tenue)}
+  button.chico{font-size:12px;padding:6px 10px}
+  button:focus-visible{outline:2px solid var(--verde);outline-offset:2px}
+  .campo{
+    background:var(--panel-up);border:1px solid var(--line);border-radius:8px;
+    padding:11px 12px;color:var(--texto);font-family:var(--sans);font-size:15px;outline:none;width:100%;
+  }
+  .mini{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:0 6px 0 10px}
+  .mini input{width:56px;background:transparent;border:none;outline:none;color:var(--texto);font-family:var(--mono);font-size:14px}
+  .persona{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line)}
+  .persona:first-of-type{border-top:none}
+  .persona .n{font-size:15px}
+  .persona .d{font-family:var(--mono);font-size:13px;color:var(--tenue)}
+  .yo{color:var(--verde)}
+  .pie{font-size:12px;color:var(--tenue);margin-top:14px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .aviso{margin-top:14px;font-size:13px;color:var(--ambar);line-height:1.5}
+  .oculto{display:none}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="head">
+    <div>
+      <div class="eyebrow" id="etiquetaModo">Modo link</div>
+      <div class="sala" id="tituloSala">—</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="chico" id="btnSonido">Activar sonido</button>
+      <button class="chico" id="btnLink">Copiar link</button>
+    </div>
+  </div>
+
+  <div class="panel" id="monitor" style="margin-top:16px;padding-top:34px;padding-bottom:26px">
+    <div class="digitos" id="digitos">00:00</div>
+    <div class="barra" id="barra"><div id="avance"></div></div>
+    <div class="estado" id="estado">Elige una duración y arranca</div>
+
+    <div class="fila">
+      <button data-min="25">25 min</button>
+      <button data-min="50">50 min</button>
+      <button data-min="90">90 min</button>
+      <div class="mini">
+        <input type="number" id="minutos" min="1" max="480" value="50" aria-label="Minutos" />
+        <button class="tenue chico" id="btnPersonalizado">iniciar</button>
+      </div>
+    </div>
+
+    <div class="fila" style="margin-top:12px">
+      <button id="btnPausar" class="oculto">Pausar</button>
+      <button id="btnReanudar" class="fuerte oculto">Reanudar</button>
+      <button id="btnDetener" class="tenue oculto">Detener</button>
+    </div>
+  </div>
+
+  <div class="panel oculto" id="panelGente" style="margin-top:14px">
+    <div class="eyebrow">En la sala (<span id="conteoGente">0</span>)</div>
+    <div id="listaGente"></div>
+  </div>
+
+  <div class="panel oculto" id="panelNombre" style="margin-top:14px">
+    <div class="eyebrow">Tu nombre en la sala</div>
+    <div style="display:flex;gap:8px">
+      <input class="campo" id="nombre" placeholder="Aris" maxlength="18" />
+      <button id="btnNombre">Guardar</button>
+    </div>
+  </div>
+
+  <div class="pie">
+    <span id="pieIzq"></span>
+    <span id="pieDer">Sonido apagado</span>
+  </div>
+  <div class="aviso oculto" id="aviso"></div>
+</div>
+
+<script type="module">
+/* =========================================================================
+   CONFIGURACIÓN
+   -------------------------------------------------------------------------
+   Modo link (por defecto): no necesitas tocar nada. Cada bloque genera una
+   URL; quien la abre ve el mismo conteo al segundo.
+
+   Modo sala en vivo (opcional): crea un proyecto en Firebase, activa
+   Realtime Database y pega aquí la config. En cuanto FIREBASE.databaseURL
+   tenga valor, la página cambia sola a salas en vivo.
+   ========================================================================= */
+const FIREBASE = {
+  apiKey: "AIzaSyCurBiYUGckz1cpRmpTLWu_ketz12oIOoQ",
+  databaseURL: "https://reloj-enarm-default-rtdb.firebaseio.com",
+  projectId: "reloj-enarm"
+};
+
+/* ---------- utilidades ---------- */
+const $ = (id) => document.getElementById(id);
+const dosDig = (n) => String(n).padStart(2, "0");
+const formato = (ms) => {
+  const neg = ms < 0, t = Math.floor(Math.abs(ms) / 1000);
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  return (neg ? "+" : "") + (h > 0 ? `${h}:${dosDig(m)}:${dosDig(s)}` : `${dosDig(m)}:${dosDig(s)}`);
+};
+const codigoNuevo = () => {
+  const L = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from({length:4}, () => L[Math.floor(Math.random()*L.length)]).join("");
+};
+const idNuevo = () => Math.random().toString(36).slice(2, 10);
+const restante = (t, ahora) => !t ? 0 : (t.corriendo ? t.duracionMs - (ahora - t.iniciadoEn) : t.pausadoEn);
+
+/* ---------- campana ---------- */
+let ctxAudio = null, sonidoOn = false;
+async function activarSonido(){
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return false;
+    ctxAudio = ctxAudio || new AC();
+    if(ctxAudio.state === "suspended") await ctxAudio.resume();
+    return ctxAudio.state === "running";
+  }catch{ return false; }
+}
+function tocar(veces = 3){
+  if(!ctxAudio) return;
+  try{
+    for(let i = 0; i < veces; i++){
+      const t0 = ctxAudio.currentTime + i * 0.75;
+      [880, 1320].forEach((f, k) => {
+        const osc = ctxAudio.createOscillator(), g = ctxAudio.createGain();
+        osc.type = "sine"; osc.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(k === 0 ? 0.35 : 0.16, t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.1);
+        osc.connect(g); g.connect(ctxAudio.destination);
+        osc.start(t0); osc.stop(t0 + 1.2);
+      });
+    }
+  }catch{}
+}
+
+/* ---------- estado ---------- */
+const params = new URLSearchParams(location.search);
+const enVivo = !!FIREBASE.databaseURL;
+const sala = (params.get("sala") || "").toUpperCase() || codigoNuevo();
+const miId = idNuevo();
+let miNombre = localStorage.getItem("nombre-sala") || "";
+let timer = null;
+let ultimoSonado = null;
+let misBloques = 0, misMinutos = 0;
+let backend = null;
+
+/* ---------- backend: modo link (sin servidor) ---------- */
+const backendLink = {
+  iniciar(cb){
+    const leerHash = () => {
+      const h = new URLSearchParams(location.hash.slice(1));
+      const ini = Number(h.get("i")), dur = Number(h.get("d"));
+      if(ini && dur){
+        cb({ duracionMs: dur, iniciadoEn: ini, pausadoEn: dur, corriendo: true, por: h.get("p") || "" });
+      }
+    };
+    leerHash();
+    window.addEventListener("hashchange", leerHash);
+  },
+  guardar(t){
+    timer = t;
+    if(t.corriendo){
+      const h = new URLSearchParams({ i: String(t.iniciadoEn), d: String(t.duracionMs), p: t.por || "" });
+      history.replaceState(null, "", location.pathname + location.search + "#" + h.toString());
+    }
+    pintar();
+  }
+};
+
+/* ---------- backend: modo sala en vivo (Firebase) ---------- */
+async function crearBackendFirebase(){
+  const appMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+  const dbMod  = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js");
+  const app = appMod.initializeApp(FIREBASE);
+  const db  = dbMod.getDatabase(app);
+  const refTimer = dbMod.ref(db, `salas/${sala}/timer`);
+  const refGente = dbMod.ref(db, `salas/${sala}/gente`);
+  const refYo    = dbMod.ref(db, `salas/${sala}/gente/${miId}`);
+  dbMod.onDisconnect(refYo).remove();
+
+  return {
+    iniciar(cb){
+      dbMod.onValue(refTimer, (snap) => { const v = snap.val(); if(v) cb(v); });
+      dbMod.onValue(refGente, (snap) => pintarGente(Object.values(snap.val() || {})));
+      this.latido();
+      setInterval(() => this.latido(), 25000);
+    },
+    guardar(t){ timer = t; pintar(); dbMod.set(refTimer, t); },
+    latido(){ dbMod.set(refYo, { nombre: miNombre || "Sin nombre", bloques: misBloques, minutos: misMinutos }); }
+  };
+}
+
+/* ---------- pintado ---------- */
+function pintar(){
+  const ahora = Date.now();
+  const mins = Number($("minutos").value) || 50;
+  const r = timer ? restante(timer, ahora) : mins * 60000;
+  const total = timer ? timer.duracionMs : mins * 60000;
+  const fin = timer && r <= 0;
+
+  $("digitos").textContent = formato(r);
+  $("digitos").classList.toggle("fin", !!fin);
+  $("barra").classList.toggle("fin", !!fin);
+  $("avance").style.width = timer ? `${Math.min(100, Math.max(0, (1 - r / total) * 100))}%` : "0%";
+
+  $("estado").textContent = !timer
+    ? "Elige una duración y arranca"
+    : fin
+      ? `Tiempo cumplido — bloque de ${Math.round(timer.duracionMs / 60000)} min`
+      : timer.corriendo
+        ? `Corriendo · ${Math.round(timer.duracionMs / 60000)} min${timer.por ? " · inició " + timer.por : ""}`
+        : "En pausa";
+
+  $("btnPausar").classList.toggle("oculto", !(timer && timer.corriendo && !fin));
+  $("btnReanudar").classList.toggle("oculto", !(timer && !timer.corriendo && !fin));
+  $("btnDetener").classList.toggle("oculto", !timer);
+
+  // campana
+  if(timer && timer.corriendo && r <= 0 && ultimoSonado !== timer.iniciadoEn){
+    ultimoSonado = timer.iniciadoEn;
+    if(sonidoOn) tocar(3);
+    $("monitor").classList.add("alerta");
+    misBloques++; misMinutos += Math.round(timer.duracionMs / 60000);
+    if(enVivo && backend && backend.latido) backend.latido();
+    setTimeout(() => $("monitor").classList.remove("alerta"), 6000);
+  }
+}
+
+function pintarGente(lista){
+  const vivos = lista.sort((a,b) => (b.bloques||0) - (a.bloques||0));
+  $("conteoGente").textContent = vivos.length;
+  $("listaGente").innerHTML = vivos.map(p => `
+    <div class="persona">
+      <div class="n ${p.nombre === miNombre ? "yo" : ""}">${escapar(p.nombre || "Sin nombre")}${p.nombre === miNombre ? " · tú" : ""}</div>
+      <div class="d">${p.bloques||0} bloques · ${p.minutos||0} min</div>
+    </div>`).join("");
+}
+const escapar = (s) => String(s).replace(/[<>&"]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));
+
+/* ---------- acciones ---------- */
+function iniciar(mins){
+  const ms = Math.max(1, Math.round(mins)) * 60000;
+  ultimoSonado = null;
+  backend.guardar({ duracionMs: ms, iniciadoEn: Date.now(), pausadoEn: ms, corriendo: true, por: miNombre || "" });
+  if(!enVivo) mostrarAviso("Bloque iniciado. Dale a “Copiar link” y pásalo al grupo para que todos vean este mismo conteo.");
+}
+function pausar(){
+  if(!timer || !timer.corriendo) return;
+  backend.guardar({ ...timer, corriendo:false, pausadoEn: Math.max(0, restante(timer, Date.now())) });
+  if(!enVivo) mostrarAviso("En modo link la pausa solo aplica a tu pantalla.");
+}
+function reanudar(){
+  if(!timer || timer.corriendo) return;
+  backend.guardar({ ...timer, corriendo:true, iniciadoEn: Date.now() - (timer.duracionMs - timer.pausadoEn) });
+}
+function detener(){
+  if(!timer) return;
+  ultimoSonado = null;
+  backend.guardar({ ...timer, corriendo:false, pausadoEn: timer.duracionMs });
+}
+function mostrarAviso(txt){
+  $("aviso").textContent = txt;
+  $("aviso").classList.remove("oculto");
+  clearTimeout(mostrarAviso._t);
+  mostrarAviso._t = setTimeout(() => $("aviso").classList.add("oculto"), 6000);
+}
+
+/* ---------- arranque ---------- */
+(async function(){
+  if(enVivo){
+    $("etiquetaModo").textContent = "Sala en vivo";
+    $("tituloSala").textContent = sala;
+    $("panelGente").classList.remove("oculto");
+    $("panelNombre").classList.remove("oculto");
+    $("nombre").value = miNombre;
+    if(!params.get("sala")) history.replaceState(null, "", `?sala=${sala}`);
+    try{ backend = await crearBackendFirebase(); }
+    catch(e){ backend = backendLink; mostrarAviso("No se pudo conectar a la sala en vivo. Funcionando en modo link."); }
+  }else{
+    $("etiquetaModo").textContent = "Modo link";
+    $("tituloSala").textContent = "Bloque";
+    backend = backendLink;
+  }
+  backend.iniciar((t) => { timer = t; pintar(); });
+
+  $("btnLink").addEventListener("click", async () => {
+    try{
+      await navigator.clipboard.writeText(location.href);
+      mostrarAviso("Link copiado. Pásalo al grupo.");
+    }catch{
+      mostrarAviso("Copia la dirección de la barra del navegador y pásala al grupo.");
+    }
+  });
+  $("btnSonido").addEventListener("click", async () => {
+    sonidoOn = await activarSonido();
+    $("btnSonido").textContent = sonidoOn ? "Probar campana" : "Activar sonido";
+    $("pieDer").textContent = sonidoOn ? "Campana activa en este dispositivo" : "Sonido bloqueado por el navegador";
+    if(sonidoOn) tocar(1);
+  });
+  $("btnNombre").addEventListener("click", () => {
+    miNombre = $("nombre").value.trim().slice(0,18);
+    localStorage.setItem("nombre-sala", miNombre);
+    if(backend.latido) backend.latido();
+  });
+  document.querySelectorAll("[data-min]").forEach(b =>
+    b.addEventListener("click", () => iniciar(Number(b.dataset.min))));
+  $("btnPersonalizado").addEventListener("click", () => iniciar(Number($("minutos").value) || 50));
+  $("btnPausar").addEventListener("click", pausar);
+  $("btnReanudar").addEventListener("click", reanudar);
+  $("btnDetener").addEventListener("click", detener);
+
+  $("pieIzq").textContent = enVivo ? "Sala en vivo · todos controlan el reloj" : "Modo link · el bloque viaja en la URL";
+  setInterval(pintar, 250);
+  pintar();
+})();
+</script>
+</body>
+</html>
