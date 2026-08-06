@@ -139,6 +139,8 @@ const st = {
   breakMin: Number(localStorage.getItem("cuckoo-breakMin")) || 10,
   mode: "work",
   flashMin: null,
+  metaDiaria: Math.max(10, Number(localStorage.getItem("cuckoo-meta-diaria")) || 120),
+  ambiente: null,
   breatheCount: null,
   customOpen: false,
   customValue: 50,
@@ -166,23 +168,69 @@ let creditedFor = null;
 
 /* ========= sonido / notificaciones ========= */
 function alarmSound() {
+  // ¡Cu-cú! — dos notas descendentes como un reloj cucu real, tres veces
   if (!st.soundOn) return;
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
     const a = new AC();
-    let t = a.currentTime + 0.02, count = 0;
-    while (t < a.currentTime + 6) {
-      const o = a.createOscillator(), g = a.createGain();
-      o.connect(g); g.connect(a.destination);
-      o.type = "sine";
-      o.frequency.value = count % 2 === 0 ? 880 : 720;
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.16, t + 0.02);
-      g.gain.linearRampToValueAtTime(0, t + 0.28);
-      o.start(t); o.stop(t + 0.3);
-      t += 0.52; count++;
+    let t = a.currentTime + 0.05;
+    for (let i = 0; i < 3; i++) {
+      [[784, 0.24], [622, 0.34]].forEach(([f, d], j) => {
+        const o = a.createOscillator(), g = a.createGain();
+        o.connect(g); g.connect(a.destination);
+        o.type = "triangle";
+        o.frequency.value = f;
+        const ini = t + j * 0.28;
+        g.gain.setValueAtTime(0, ini);
+        g.gain.linearRampToValueAtTime(0.22, ini + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.001, ini + d);
+        o.start(ini); o.stop(ini + d + 0.05);
+      });
+      t += 1.05;
     }
   } catch (e) {}
+}
+
+/* ========= sonidos ambiente (lluvia / café / ruido blanco) ========= */
+let ambCtx = null, ambNodes = [];
+function pararAmbiente() {
+  ambNodes.forEach(n => { try { if (n.stop) n.stop(); n.disconnect(); } catch (e) {} });
+  ambNodes = [];
+  if (ambCtx) { try { ambCtx.close(); } catch (e) {} ambCtx = null; }
+}
+function setAmbiente(tipo) {
+  const nuevo = st.ambiente === tipo ? null : tipo;
+  pararAmbiente();
+  st.ambiente = nuevo;
+  if (!nuevo) { render(); return; }
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    ambCtx = new AC();
+    const buf = ambCtx.createBuffer(1, ambCtx.sampleRate * 2, ambCtx.sampleRate);
+    const data = buf.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < data.length; i++) {
+      const w = Math.random() * 2 - 1;
+      if (nuevo === "cafe") { last = (last + 0.02 * w) / 1.02; data[i] = last * 3.5; }
+      else data[i] = w;
+    }
+    const src = ambCtx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const filt = ambCtx.createBiquadFilter();
+    const g = ambCtx.createGain();
+    if (nuevo === "lluvia") { filt.type = "bandpass"; filt.frequency.value = 1500; filt.Q.value = 0.5; g.gain.value = 0.06; }
+    else if (nuevo === "cafe") { filt.type = "lowpass"; filt.frequency.value = 500; g.gain.value = 0.16; }
+    else { filt.type = "lowpass"; filt.frequency.value = 4000; g.gain.value = 0.04; }
+    src.connect(filt); filt.connect(g); g.connect(ambCtx.destination);
+    src.start();
+    ambNodes = [src, filt, g];
+    if (nuevo === "lluvia") {
+      const lfo = ambCtx.createOscillator(), lg = ambCtx.createGain();
+      lfo.frequency.value = 0.18; lg.gain.value = 0.025;
+      lfo.connect(lg); lg.connect(g.gain); lfo.start();
+      ambNodes.push(lfo, lg);
+    }
+  } catch (e) {}
+  render();
 }
 function notify(texto) {
   if (!st.soundOn) return;
@@ -304,6 +352,7 @@ async function enterRoom() {
 }
 function goLandingScreen() {
   clearInterval(breatheTimer);
+  pararAmbiente(); st.ambiente = null;
   if (backend) backend.salir(st.slug);
   st.screen = "landing"; render();
 }
@@ -335,9 +384,14 @@ function startBreathe(min) {
     render();
   }, 1000);
 }
-function selectDurationClick(min) {
-  st.flashMin = min; render();
-  setTimeout(() => { st.flashMin = null; startBreathe(min); }, 260);
+function selectDurationClick(min, btn) {
+  if (st.breatheCount !== null) return;
+  if (btn) {
+    btn.style.transition = "transform .2s cubic-bezier(.3,1.4,.6,1), box-shadow .2s ease, background .2s ease";
+    btn.style.transform = "scale(1.1)";
+    btn.style.boxShadow = "0 0 38px rgba(255,255,255,.55)";
+  }
+  setTimeout(() => startBreathe(min), 210);
 }
 function openCustom() { st.customOpen = true; st.customValue = st.focusMin; render(); }
 function confirmCustom() {
@@ -654,10 +708,10 @@ ${terminado ? `
 <div style="display:flex;justify-content:center;padding:20px 24px 10px">
 <div style="width:min(560px,100%);display:flex;flex-direction:column;align-items:center;gap:14px">
 <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
-${allMembers.map(m => `<span title="${esc(m.nombre)}" style="width:46px;height:46px;border-radius:50%;background:#fff;color:#25304a;display:grid;place-items:center;font-size:1.3rem;border:3px solid rgba(255,255,255,.3);box-shadow:0 3px 10px rgba(21,25,70,.15)">${esc(m.cara)}</span>`).join("")}
+${allMembers.map(m => `<span title="${esc(m.nombre)}" style="position:relative;width:46px;height:46px;border-radius:50%;background:#fff;color:#25304a;display:grid;place-items:center;font-size:1.3rem;border:3px solid rgba(255,255,255,.3);box-shadow:0 3px 10px rgba(21,25,70,.15)">${esc(m.cara)}<span style="position:absolute;bottom:-2px;right:-2px;width:13px;height:13px;border-radius:50%;border:2px solid #fff;background:${running ? (modo === "work" ? "#3ddc84" : "#38d4f5") : "#c2c2d4"}"></span></span>`).join("")}
 <button id="btn-invitar" style="width:46px;height:46px;border-radius:50%;background:transparent;color:rgba(255,255,255,.65);border:1px dashed rgba(255,255,255,.55);cursor:pointer;font-size:1.2rem">＋</button>
 </div>
-<div style="color:rgba(255,255,255,.75);font-size:.95rem">${allMembers.length} integrante(s) en esta Cuckoo.</div>
+<div style="color:rgba(255,255,255,.75);font-size:.95rem">${allMembers.length} integrante(s) · ${hayTimer ? (running ? (modo === "work" ? "📚 enfocados ahora" : "☕ descansando") : "⏸ en pausa") : "🕊 sin bloque activo"}</div>
 <div style="display:flex;gap:8px;align-items:center;font-size:.72rem;color:rgba(255,255,255,.72)">
 <span style="width:26px;height:26px;border-radius:50%;background:#fff;color:#5061d8;display:grid;place-items:center;flex-shrink:0">🌎</span>
 <span>${esc(noticeText)}</span>
@@ -707,13 +761,17 @@ ${metasList.length ? `<div style="margin-top:14px;font-size:.75rem;color:rgba(25
 <div style="font-size:.66rem;color:rgba(255,255,255,.65);margin-top:4px;letter-spacing:.05em;text-transform:uppercase">tu racha</div>
 </div>
 </div>
+<div style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:10px">Mi meta diaria</div>
+${(() => { const mios = planos.filter(h => h.pid === myId && h.fecha === hoy && h.modo === "work").reduce((s, h) => s + h.minutos, 0); const p = Math.min(100, Math.round(mios / st.metaDiaria * 100)); return `<div style="background:rgba(255,255,255,.08);border-radius:12px;padding:12px 14px;margin-bottom:22px"><div style="display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:6px"><span>${p >= 100 ? "🎉 ¡Meta cumplida!" : "Hoy llevas"}</span><span style="color:rgba(255,255,255,.7)">${mios} / ${st.metaDiaria} min</span></div><div style="height:7px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden"><div style="height:100%;width:${p}%;background:${p >= 100 ? "#3ddc84" : "#fff"};border-radius:4px;transition:width .6s ease"></div></div></div>`; })()}
+<div style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:10px">Últimos 7 días de la sala</div>
+${(() => { const ds = []; const hd = new Date(); for (let i = 6; i >= 0; i--) { const d = new Date(hd); d.setDate(hd.getDate() - i); ds.push(d.toISOString().slice(0, 10)); } const tot = ds.map(f => planos.filter(h => h.fecha === f && h.modo === "work").reduce((s, h) => s + h.minutos, 0)); const mx = Math.max(...tot, 1); const ini = ["D", "L", "M", "X", "J", "V", "S"]; return `<div style="display:flex;align-items:flex-end;gap:8px;background:rgba(255,255,255,.08);border-radius:12px;padding:14px 14px 10px;margin-bottom:22px">${ds.map((f, i) => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px"><div style="font-size:.58rem;color:rgba(255,255,255,.7)">${tot[i] ? tot[i] : ""}</div><div title="${tot[i]} min" style="width:100%;max-width:26px;height:${Math.max(4, Math.round(tot[i] / mx * 52))}px;background:${i === 6 ? "#fff" : "rgba(255,255,255,.45)"};border-radius:5px 5px 2px 2px"></div><div style="font-size:.6rem;color:rgba(255,255,255,${i === 6 ? ".95" : ".55"})">${ini[new Date(f + "T00:00:00").getDay()]}</div></div>`).join("")}</div>`; })()}
 <div style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:10px">Por integrante hoy</div>
 <div style="display:flex;flex-direction:column;gap:10px">
 ${memberStats.length ? memberStats.map((ms, idx) => `
 <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.08);border-radius:12px;padding:10px 14px">
 <span style="width:32px;height:32px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:1rem;flex-shrink:0">${esc(ms.face)}</span>
 <div style="flex:1;min-width:0">
-<div style="display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:5px;gap:8px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${idx === 0 && ms.minutes > 0 ? "🏆 " : ""}${esc(ms.name)}</span><span style="color:rgba(255,255,255,.7);flex-shrink:0">${ms.minutes} min</span></div>
+<div style="display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:5px;gap:8px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ms.minutes > 0 && idx < 3 ? ["🥇 ", "🥈 ", "🥉 "][idx] : ""}${esc(ms.name)}${ms.minutes >= st.metaDiaria ? " ⭐" : ""}</span><span style="color:rgba(255,255,255,.7);flex-shrink:0">${ms.minutes} min</span></div>
 <div style="height:5px;background:rgba(255,255,255,.15);border-radius:3px"><div style="height:100%;width:${Math.round(ms.minutes / maxMin * 100)}%;background:#fff;border-radius:3px"></div></div>
 </div>
 </div>`).join("") : `<div style="color:rgba(255,255,255,.5);font-size:.85rem">Nadie ha completado un bloque todavía.</div>`}
@@ -735,6 +793,14 @@ ${st.detailsOpen ? `
 <input id="in-break" type="number" min="1" max="60" value="${st.breakMin}" style="width:100%;padding:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);color:#fff;margin-top:5px;border-radius:8px;font-family:inherit">
 </label>
 <button id="btn-sonido" style="width:100%;margin-top:10px;border:1px solid rgba(255,255,255,.34);background:transparent;color:#fff;padding:13px;border-radius:8px;font-weight:700;cursor:pointer">${st.soundOn ? "🔔 Sonido y notificaciones activadas" : "🔕 Sonido y notificaciones desactivadas"}</button>
+<label style="display:block;font-size:.7rem;margin-top:22px">Mi meta diaria de estudio (min)
+<input id="in-meta-diaria" type="number" min="10" max="960" value="${st.metaDiaria}" style="width:100%;padding:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);color:#fff;margin-top:5px;border-radius:8px;font-family:inherit">
+</label>
+<div style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);margin:22px 0 10px">Sonido ambiente</div>
+<div style="display:flex;gap:10px">
+${[["lluvia","🌧️ Lluvia"],["cafe","☕ Café"],["blanco","📻 Blanco"]].map(([key,label]) => `<button data-amb="${key}" class="btn-ambiente" style="flex:1;padding:12px 6px;border-radius:10px;border:0;cursor:pointer;font-family:inherit;font-size:.8rem;font-weight:700;background:${st.ambiente===key?"#fff":"rgba(255,255,255,.12)"};color:${st.ambiente===key?"#5360d8":"#fff"}">${label}</button>`).join("")}
+</div>
+<p style="margin:8px 0 0;font-size:.68rem;color:rgba(255,255,255,.5)">Toca de nuevo el mismo botón para apagarlo.</p>
 </div>
 </div>` : ""}
 
@@ -765,7 +831,7 @@ ${[["anillo","Anillo"],["minimal","Minimalista"]].map(([key,label]) => `<button 
 </div>
 </div>`;
 
-  document.querySelectorAll(".btn-dur").forEach(b => b.addEventListener("click", () => selectDurationClick(Number(b.dataset.min))));
+  document.querySelectorAll(".btn-dur").forEach(b => b.addEventListener("click", () => selectDurationClick(Number(b.dataset.min), b)));
   const bca = document.getElementById("btn-custom-abrir"); if (bca) bca.addEventListener("click", openCustom);
   const bco = document.getElementById("btn-custom-ok"); if (bco) bco.addEventListener("click", () => { st.customValue = document.getElementById("in-custom").value; confirmCustom(); });
   const bsd = document.getElementById("btn-saltar-descanso"); if (bsd) bsd.addEventListener("click", skipBreak);
@@ -779,6 +845,8 @@ ${[["anillo","Anillo"],["minimal","Minimalista"]].map(([key,label]) => `<button 
   const inFocus = document.getElementById("in-focus"); if (inFocus) inFocus.addEventListener("change", e => setFocusMin(e.target.value));
   const inBreak = document.getElementById("in-break"); if (inBreak) inBreak.addEventListener("change", e => setBreakMin(e.target.value));
   const bsonido = document.getElementById("btn-sonido"); if (bsonido) bsonido.addEventListener("click", toggleSound);
+  document.querySelectorAll(".btn-ambiente").forEach(b => b.addEventListener("click", () => setAmbiente(b.dataset.amb)));
+  const imd = document.getElementById("in-meta-diaria"); if (imd) imd.addEventListener("change", e => { st.metaDiaria = Math.max(10, Math.min(960, Number(e.target.value) || 120)); localStorage.setItem("cuckoo-meta-diaria", st.metaDiaria); render(); });
   const inMeta = document.getElementById("in-meta");
   if (inMeta) { inMeta.addEventListener("input", e => st.metaInput = e.target.value); inMeta.addEventListener("keydown", e => { if (e.key === "Enter") addMeta(); }); }
   const bam = document.getElementById("btn-agregar-meta"); if (bam) bam.addEventListener("click", addMeta);
