@@ -1,3 +1,475 @@
+
+/
+pake-cli
+.yaml
+necesito que revises este codigo, lo que quiero es que mi app este en la barra superior, y que cuando le de clic se muestre pero desde la barra superior de mac
+0:03
+pake-cli
+.yaml
+Pensamiento
+Listo — arriba tienes el archivo pake-cli.yaml corregido para descargar. Resumen de la revisión:
+✅ Lo que tu código ya hacía bien
+--show-system-tray se agrega siempre en macOS → tu app tendrá su ícono en la barra superior, y al hacerle clic se muestra/oculta la ventana.
+LSUIElement = true en el Info.plist → la app vive solo en la barra de menú: sin ícono en el Dock ni en Cmd+Tab. Justo el comportamiento de "menu bar app".
+🔧 Lo que corregí
+Re-firma después de modificar el Info.plist: editar el plist con PlistBuddy invalida la firma de código que Pake genera al construir. Sin re-firmar, al abrir el .app macOS suele decir "la app está dañada". Agregué codesign --force --deep --sign - "$APP" justo antes de comprimirla.
+💡 Recomendaciones al ejecutar el workflow
+Activa hide_title_bar: true y usa un tamaño más compacto (p. ej. width: 420, height: 640) para que se sienta como un panel de barra de menú y no como ventana normal.
+Si descargas el zip desde GitHub Actions y macOS bloquea la app por no estar notarizada, ejecútale una vez: xattr -cr "TuApp.app".
+⚠️ Una limitación a tener en cuenta
+Pake muestra/oculta la ventana al hacer clic en el ícono del tray, pero no la ancla como popover debajo del ícono (estilo apps nativas de barra de menú). La ventana aparece en su última posición — puedes arrastrarla arriba y ahí se queda. Si quieres el efecto popover real anclado al ícono, habría que salir de Pake y usar Tauri directo con el plugin tauri-plugin-positioner (posición TrayCenter). Dime si te interesa y te armo esa configuración.
+Captura de pantalla 2026-08-06 a la(s) 0.10.26.png
+me gustaria hacer un efecto asi con mi app
+0:10
+Pensamiento
+¡Perfecto! Ese efecto (el panel que se despliega anclado justo debajo del ícono de la barra de menú, como el widget del clima) no se puede lograr con Pake, pero sí con Tauri + el plugin positioner. Te voy a armar el proyecto completo listo para compilar con GitHub Actions, igual que hacías con Pake. 🐕
+menubar-app
+.zip
+¡Listo! 🐕 Te dejé arriba menubar-app.zip con el proyecto completo. Es exactamente el efecto del widget del clima que me mostraste: la ventana se despliega anclada justo debajo del ícono de la barra superior y se oculta sola al hacer clic fuera.
+Qué incluye el proyecto
+Tauri 2 + tauri-plugin-positioner — el plugin que ancla la ventana en posición TrayBottomCenter (debajo del ícono), cosa que Pake no puede hacer.
+Comportamiento popover completo:
+Clic en el ícono → el panel aparece debajo del ícono
+Clic de nuevo → se oculta
+Clic fuera del panel → se oculta solo (al perder foco)
+Sin ícono en el Dock ni en Cmd+Tab (ActivationPolicy::Accessory)
+Ventana sin barra de título, 420×640, siempre al frente
+Workflow de GitHub Actions (.github/workflows/build.yml) — compila en macos-latest igual que tu flujo de Pake y sube el .app (zip) y el .dmg como artifacts.
+Íconos ya generados: ícono de app (png + icns) y un ícono template negro para la barra de menú que se adapta a modo claro/oscuro. Puedes reemplazarlos cuando quieras.
+Pasos para usarlo
+Descomprime el zip y abre src-tauri/tauri.conf.json:
+Cambia frontendDist por la URL de tu sitio (donde dice https://CAMBIA-ESTA-URL.com)
+Cambia productName e identifier por el nombre de tu app
+Sube la carpeta a un repo de GitHub
+Ve a Actions → Build macOS Menu Bar App → Run workflow
+Descarga el artifact, mueve la app a Aplicaciones, y si macOS dice que está dañada (no está notarizada): xattr -cr "/Applications/TuApp.app"
+El README dentro del zip tiene estos mismos pasos con más detalle. Si quieres ajustar algo — el tamaño del panel, que tenga esquinas redondeadas transparentes, un atajo de teclado global para abrirla, o un ícono de tray personalizado — dime y te lo modifico. 🚀
+dame el archivo ya con esos datos, link de mi app: https://aristeovaladezmontero-coder.github.io/reloj/?sala=M7AF y te  paso el link del icono: https://raw.githubusercontent.com/aristeovaladezmontero-coder/reloj/main/icono-cuckoo-enarm.png  el nombre de mi ap: cukcoo enarm aris
+0:20
+cukcoo-enarm-aris
+.zip
+¡Listo! 🐕 Arriba tienes cukcoo-enarm-aris.zip, ya configurado con tus datos:
+Qué quedó configurado
+Nombre de la app: Cukcoo ENARM Aris (la app se instalará como Cukcoo ENARM Aris.app)
+URL: https://aristeovaladezmontero-coder.github.io/reloj/?sala=M7AF — carga directo tu reloj con la sala M7AF
+Ícono: como el sandbox no tiene internet, hice algo mejor: el workflow de GitHub Actions descarga tu ícono automáticamente en cada build desde tu repo reloj y genera todos los formatos (.icns para la app, PNG de 1024px y la versión 44×44 para la barra de menú). Si algún día cambias icono-cuckoo-enarm.png en tu repo, el siguiente build usará el ícono nuevo sin tocar nada.
+El ícono de la barra de menú se mostrará a color (tu cuckoo), no como silueta.
+Pasos para compilarla
+Descomprime el zip y sube la carpeta a un repositorio de GitHub (puede ser uno nuevo, p. ej. cukcoo-enarm-aris)
+Ve a Actions → Build macOS Menu Bar App → Run workflow
+Descarga el artifact menubar-app-macOS — incluye el .app (en zip) y un .dmg
+Mueve la app a Aplicaciones y, si macOS dice que está dañada (por no estar notarizada), ejecuta una vez en Terminal:
+xattr -cr "/Applications/Cukcoo ENARM Aris.app"
+​
+Al abrirla verás tu cuckoo en la barra superior: clic → tu reloj se despliega justo debajo del ícono (como el widget del clima), clic fuera → se oculta solo. Sin ícono en el Dock ni en Cmd+Tab. 🕰️
+Si quieres ajustar el tamaño del panel (ahora es 420×640) o cualquier otro detalle, dime y te regenero el zip.
+pero que carpeto subo? la que descomprimi cuando la intento subir me entra a las subcarpetas y tengo que seleecionar solo archivos no carpetas
+0:28
+Pensamiento
+¡Buena pregunta! Es una confusión clásica de GitHub. Te explico las dos formas, de la más fácil a la alternativa:
+Opción A — Arrastrar el contenido (la más fácil) 🖱️
+En GitHub web no se usa el botón "choose your files" (ese solo acepta archivos sueltos). Lo que funciona es arrastrar:
+Crea tu repositorio nuevo en GitHub (p. ej. cukcoo-enarm-aris)
+En el repo, ve a Add file → Upload files
+Abre en Finder la carpeta descomprimida cukcoo-enarm-aris y entra a ella
+Importante: presiona Cmd + Shift + . (punto) en Finder para ver las carpetas ocultas — la carpeta .github (que contiene el workflow) está oculta y sin ella no habrá botón de "Run workflow"
+Selecciona todo lo que está dentro (.github, src-tauri, README.md, package.json, .gitignore) con Cmd + A
+Arrástralo a la zona de GitHub que dice "Drag files here to add them to your repository" — al arrastrar carpetas, GitHub sí conserva la estructura de subcarpetas
+Clic en Commit changes
+O sea: no subes la carpeta cukcoo-enarm-aris en sí, sino su contenido, arrastrado.
+Opción B — Terminal (más confiable) 💻
+Si el arrastre te da problemas, esto toma 1 minuto. Primero crea el repo vacío en GitHub, y luego en Terminal:
+cd ~/Downloads/cukcoo-enarm-aris
+git init
+git add .
+git commit -m "Cukcoo ENARM Aris"
+git branch -M main
+git remote add origin https://github.com/aristeovaladezmontero-coder/cukcoo-enarm-aris.git
+git push -u origin main
+​
+(Ajusta la ruta ~/Downloads/... si descomprimiste el zip en otro lugar.)
+✅ Cómo verificar que quedó bien
+En la página principal del repo debes ver .github, src-tauri, README.md, package.json — como carpetas y archivos, no todo aplanado. Si ves .github, la pestaña Actions te mostrará "Build macOS Menu Bar App" listo para correr con Run workflow.
+Si la carpeta .github no se subió (es lo más común por estar oculta), avísame y te digo cómo crearla directo desde la web de GitHub con copy-paste.
+Captura de pantalla 2026-08-06 a la(s) 0.31.32.png
+no encuentro la opcion ya estoy en actions
+0:31
+Pensamiento
+Eso que ves significa que la carpeta .github no se subió (es la carpeta oculta que te mencioné — GitHub Actions muestra esa pantalla de "Get started" cuando no encuentra ningún workflow). No pasa nada, lo arreglamos directo desde la web con copy-paste. Déjame darte el contenido exacto:
+No te preocupes — esa pantalla de "Get started with GitHub Actions" aparece porque la carpeta oculta .github no se subió con el resto. La creamos directo desde la web en 1 minuto:
+Crear el workflow desde GitHub web
+Ve a la pestaña Code de tu repo (la principal)
+Clic en Add file → Create new file (botón arriba a la derecha, junto al botón verde)
+En el campo del nombre del archivo, escribe exactamente esto (las diagonales crean las carpetas automáticamente):
+.github/workflows/build.yml
+​
+Pega este contenido en el editor:
+name: Build macOS Menu Bar App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-menubar-${{ hashFiles('**/Cargo.toml') }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Fetch app icon and generate all icon formats
+        run: |
+          curl -fsSL -o /tmp/icon-src.png "https://raw.githubusercontent.com/aristeovaladezmontero-coder/reloj/main/icono-cuckoo-enarm.png"
+          # Ícono principal 1024x1024
+          sips -z 1024 1024 /tmp/icon-src.png --out src-tauri/icons/icon.png
+          # ICNS con todos los tamaños estándar
+          mkdir -p /tmp/icon.iconset
+          for s in 16 32 128 256 512; do
+            sips -z $s $s /tmp/icon-src.png --out /tmp/icon.iconset/icon_${s}x${s}.png
+            sips -z $((s*2)) $((s*2)) /tmp/icon-src.png --out /tmp/icon.iconset/icon_${s}x${s}@2x.png
+          done
+          iconutil -c icns /tmp/icon.iconset -o src-tauri/icons/icon.icns
+          # Ícono de la barra de menú (44x44)
+          sips -z 44 44 /tmp/icon-src.png --out src-tauri/icons/tray.png
+
+      - name: Install Tauri CLI
+        run: npm install
+
+      - name: Build app
+        run: npx tauri build --bundles app,dmg
+
+      - name: Zip .app
+        run: |
+          APP_PATH=$(find src-tauri/target/release/bundle/macos -maxdepth 1 -name "*.app" | head -1)
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" app-macOS.zip
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: menubar-app-macOS
+          path: |
+            app-macOS.zip
+            src-tauri/target/release/bundle/dmg/*.dmg
+          retention-days: 3
+​
+Clic en Commit changes (botón verde)
+Después de eso
+Regresa a Actions → ahora sí verás "Build macOS Menu Bar App" en la lista de la izquierda
+Clic en él → botón Run workflow → Run workflow (verde)
+Espera ~10-15 min y descarga el artifact menubar-app-macOS
+⚠️ Antes de correr el workflow, verifica una cosa
+Ve a la pestaña Code y confirma que en la raíz del repo se vea la carpeta src-tauri con todo adentro (Cargo.toml, src/main.rs, tauri.conf.json, icons/, capabilities/) y el archivo package.json. Si esas no se subieron o quedaron aplanadas (archivos sueltos sin carpetas), el build fallará — en ese caso mándame una captura de cómo se ve tu repo y te digo exactamente qué corregir.
+no me deja subir el archivo por que dice que esta oculto
+0:36
+Pensamiento
+No necesitas subir ese archivo desde tu Mac 🐕 — olvídate de Finder para esta parte. La carpeta .github se crea directamente en la página de GitHub, escribiendo y pegando. Nada de arrastrar ni seleccionar archivos ocultos:
+Paso a paso (todo en el navegador)
+Ve a la pestaña Code de tu repo cukcoo-enarm-aris
+Arriba a la derecha (junto al botón verde <> Code), clic en Add file → Create new file
+Ojo: es "Create new file" (crear), NO "Upload files" (subir)
+Se abre un editor con un campo de texto arriba que dice "Name your file...". Ahí escribe a mano:
+.github/workflows/build.yml
+​
+Verás que al escribir cada /, GitHub convierte lo anterior en carpeta automáticamente: primero .github/, luego workflows/, y al final queda el archivo build.yml. Así se crea la carpeta oculta sin subir nada.
+En el área grande de abajo (el editor), pega todo el contenido YAML que te di en mi mensaje anterior (el bloque largo que empieza con name: Build macOS Menu Bar App)
+Clic en el botón verde Commit changes → Commit changes otra vez
+Resultado
+Regresa a la pestaña Actions y ahora sí aparecerá "Build macOS Menu Bar App" en el menú de la izquierda, con el botón Run workflow. 🚀
+Si en el paso 2 no ves "Create new file", dime qué opciones te aparecen (o mándame captura) y te guío desde ahí.
+Captura de pantalla 2026-08-06 a la(s) 0.41.24.png
+Pensamiento
+Veo que el workflow ya corrió pero falló a los 20 segundos — eso significa que tronó en uno de los primeros pasos. Déjame revisar tu repo para diagnosticar:
+Confirmado el diagnóstico 🐕: en tu repo solo existe el workflow que creaste con copy-paste — los archivos del proyecto (src-tauri y package.json) nunca se subieron. Por eso el build falla a los 20 segundos: intenta compilar algo que no está ahí.
+La buena noticia: tu ícono sí está accesible ✓ y el workflow ya está bien ✓. Solo falta subir el proyecto, y esta vez es fácil porque ninguno de los archivos que faltan está oculto:
+Sube los archivos que faltan (2 minutos)
+En tu repo, pestaña Code → Add file → Upload files
+Abre en Finder la carpeta descomprimida cukcoo-enarm-aris y entra a ella
+Selecciona solamente estas dos cosas (ambas visibles, sin necesidad de mostrar ocultos):
+La carpeta src-tauri completa
+El archivo package.json
+Arrástralas juntas a la zona que dice "Drag files here..." — GitHub conservará la estructura de la carpeta
+Espera a que aparezca la lista de archivos cargados (deberías ver rutas como src-tauri/src/main.rs, src-tauri/Cargo.toml, src-tauri/icons/icon.png, etc.)
+Clic en Commit changes
+Verifica y vuelve a correr
+En la pestaña Code ahora debes ver en la raíz: .github, src-tauri, package.json
+Ve a Actions → Build macOS Menu Bar App → Run workflow → Run workflow
+Esta vez el build sí debería avanzar (tardará ~10-15 min por la compilación de Rust). La advertencia amarilla de "Node.js 20 is deprecated" que viste es solo un aviso de GitHub, no es error — ignórala.
+Si algo vuelve a fallar, mándame captura del paso rojo (haz clic en el job "build" para ver qué paso falló) y lo corregimos.
+Captura de pantalla 2026-08-06 a la(s) 0.47.55.png
+Pensamiento
+Bien, ¡hubo avance! 🐕 Ahora falló a los 2m23s (antes 20s), o sea que los archivos ya se subieron y el proceso llegó más lejos. Déjame revisar qué quedó en el repo para diagnosticar:
+Pensamiento
+Ya tengo el ID del build fallido. Ahora consulto los pasos del job para ver exactamente cuál tronó:
+Página web cargada: api.github.com/repos/aristeovaladezmontero-coder/cukcoo-enarm-aris/actions/runs/31078353979/jobs
+No pude leer el detalle del log (GitHub no expone el texto completo sin iniciar sesión), pero ya sé mucho: todo el setup pasó bien — repo ✓, archivos ✓, ícono descargado y convertido ✓ — y falló exactamente en la compilación ("Build app") a los 2 minutos. Para decirte el arreglo exacto necesito ver el mensaje de error de ese paso, y solo tú puedes verlo:
+Mándame el error exacto (30 segundos)
+En la página del build fallido (donde estás), haz clic en el recuadro "build" (el que tiene la ✕ roja)
+Se abre la lista de pasos — busca el paso "Build app" con la ✕ roja y haz clic para expandirlo
+Baja hasta el final de ese log (ahí está el error real, usualmente unas líneas que empiezan con error: o Error)
+Mándame una captura de esas últimas líneas (o copia y pega el texto)
+Con eso te digo la corrección exacta en lugar de andar adivinando. 🐕
+Tip: en la esquina del log hay un engranaje ⚙️ con la opción "View raw logs" — si la usas, puedes copiar todo el texto fácilmente y pegarme solo el final.
+Compiling tray-icon v0.24.2
+   Compiling tauri-macros v2.6.3
+   Compiling window-vibrancy v0.6.0
+   Compiling serde_repr v0.1.21
+   Compiling mime v0.3.17
+   Compiling embed_plist v1.2.2
+   Compiling menubar-app v1.0.0 (/Users/runner/work/cukcoo-enarm-aris/cukcoo-enarm-aris/src-tauri)
+error: proc macro panicked  --> src/main.rs:60:14
+   |60 |         .run(tauri::generate_context!())
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^   |   = help: message: icon /Users/runner/work/cukcoo-enarm-aris/cukcoo-enarm-aris/src-tauri/icons/icon.png is not RGBA
+error: could not compile `menubar-app` (bin "menubar-app") due to 1 previous error
+failed to build app: failed to build app
+       Error failed to build app: failed to build app
+Error: Process completed with exit code 1.
+0s0s0s0s3s2s
+0:53
+Pensamiento
+¡Excelente, con ese log ya está clarísimo! 🐕 El error es:
+icon icon.png is not RGBA
+Traducción: Tauri exige que los íconos PNG estén en formato RGBA (con canal de transparencia), y al convertir tu ícono con sips, quedó como RGB (sin canal alfa). Es un detalle de formato de imagen, nada grave. La solución es convertir el ícono forzando RGBA con Python en lugar de sips. Actualizo el workflow:
+¡Con ese log quedó clarísimo el problema! 🐕 El error dice: icon icon.png is not RGBA — Tauri exige que los íconos PNG tengan canal de transparencia (formato RGBA), y al convertir tu ícono con la herramienta sips de macOS, quedó como RGB (sin transparencia). Ya corregí el workflow para que la conversión fuerce RGBA usando Python.
+Qué hacer (2 minutos)
+En tu repo, abre el archivo .github/workflows/build.yml
+Clic en el lápiz ✏️ (Edit this file)
+Borra todo y pega esta versión corregida:
+name: Build macOS Menu Bar App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-menubar-${{ hashFiles('**/Cargo.toml') }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Fetch app icon and generate all icon formats
+        run: |
+          curl -fsSL -o /tmp/icon-src.png "https://raw.githubusercontent.com/aristeovaladezmontero-coder/reloj/main/icono-cuckoo-enarm.png"
+          python3 -m pip install --quiet pillow || python3 -m pip install --quiet --break-system-packages pillow
+          cat > /tmp/make_icons.py <<'EOF'
+          from PIL import Image
+          import os
+          # Forzar RGBA (Tauri lo exige) y hacer el lienzo cuadrado
+          src = Image.open('/tmp/icon-src.png').convert('RGBA')
+          side = max(src.size)
+          canvas = Image.new('RGBA', (side, side), (0, 0, 0, 0))
+          canvas.paste(src, ((side - src.width) // 2, (side - src.height) // 2))
+          canvas.resize((1024, 1024), Image.LANCZOS).save('src-tauri/icons/icon.png')
+          canvas.resize((44, 44), Image.LANCZOS).save('src-tauri/icons/tray.png')
+          os.makedirs('/tmp/icon.iconset', exist_ok=True)
+          for s in [16, 32, 128, 256, 512]:
+              canvas.resize((s, s), Image.LANCZOS).save(f'/tmp/icon.iconset/icon_{s}x{s}.png')
+              canvas.resize((s * 2, s * 2), Image.LANCZOS).save(f'/tmp/icon.iconset/icon_{s}x{s}@2x.png')
+          EOF
+          python3 /tmp/make_icons.py
+          iconutil -c icns /tmp/icon.iconset -o src-tauri/icons/icon.icns
+
+      - name: Install Tauri CLI
+        run: npm install
+
+      - name: Build app
+        run: npx tauri build --bundles app,dmg
+
+      - name: Zip .app
+        run: |
+          APP_PATH=$(find src-tauri/target/release/bundle/macos -maxdepth 1 -name "*.app" | head -1)
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" app-macOS.zip
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: menubar-app-macOS
+          path: |
+            app-macOS.zip
+            src-tauri/target/release/bundle/dmg/*.dmg
+          retention-days: 3
+​
+Commit changes → ve a Actions → Run workflow otra vez
+Qué cambió
+Solo el paso "Fetch app icon": ahora usa Python/Pillow para convertir tu ícono a RGBA (con transparencia), centrarlo en un lienzo cuadrado y generar todos los tamaños. El resto quedó idéntico.
+Buena señal: el log muestra que la compilación de Rust ya iba muy avanzada (compiló tray-icon, tauri-macros, etc.) y tronó justo al final, al incrustar el ícono. Con esto corregido, hay buenas probabilidades de que el siguiente build llegue hasta el final. Además, gracias al caché que configuramos, el próximo intento será más rápido. Si algo más falla, mándame de nuevo las últimas líneas del log. 🤞
+ya instale la app pero no hace nada, ni aarecion en ingun lugar
+1:05
+Pensamiento
+Tranquilo, esto tiene explicación 🐕. Recuerda que la app está diseñada para no aparecer en el Dock ni abrir ventana al inicio — lo único que debe aparecer es el ícono del cuckoo en la barra superior. Si no ves nada ahí, vamos a diagnosticar en orden:
+1. Primero: quita la cuarentena (causa más probable)
+Como la app no está notarizada por Apple, macOS puede bloquearla silenciosamente (sin mostrar ningún mensaje). Abre Terminal y ejecuta:
+xattr -cr "/Applications/Cukcoo ENARM Aris.app"
+open "/Applications/Cukcoo ENARM Aris.app"
+​
+(Ajusta la ruta si la dejaste en otra carpeta.)
+2. Revisa bien la barra superior
+El ícono nuevo aparece a la izquierda de los íconos existentes
+Tu barra ya tiene muchos íconos y si tu Mac tiene notch, macOS esconde los íconos que no caben sin avisar. Prueba cerrar temporalmente algún otro ícono de la barra (o mantén presionado Cmd y arrastra alguno fuera) para hacer espacio
+3. Verifica si la app está corriendo
+Abre Monitor de Actividad (Spotlight → "Monitor de Actividad") y busca cukcoo o menubar.
+Si aparece → la app corre bien y el problema es solo que el ícono está oculto por falta de espacio (punto 2)
+Si no aparece → ejecútala desde Terminal para ver el error real:
+ls "/Applications/Cukcoo ENARM Aris.app/Contents/MacOS/"
+​
+y luego corre el binario que te muestre, por ejemplo:
+"/Applications/Cukcoo ENARM Aris.app/Contents/MacOS/Cukcoo ENARM Aris"
+​
+Si truena, ahí mismo imprimirá el motivo — pégame ese texto y te doy el arreglo exacto.
+Cuéntame qué encontraste en cada paso (sobre todo si aparece en Monitor de Actividad y qué dice la Terminal) y de ahí seguimos. 🔍
+Last login: Thu Aug  6 01:02:11 on ttys000
+aristeovaladezmontero@MacBook-Air-de-aristeo ~ % ls "/Applications/Cukcoo ENARM Aris.app/Contents/MacOS/"
+menubar-app
+aristeovaladezmontero@MacBook-Air-de-aristeo ~ % "/Applications/Cukcoo ENARM Aris.app/Contents/MacOS/Cukcoo ENARM Aris"
+zsh: no such file or directory: /Applications/Cukcoo ENARM Aris.app/Contents/MacOS/Cukcoo ENARM Aris
+aristeovaladezmontero@MacBook-Air-de-aristeo ~ %
+1:08
+Pensamiento
+¡Perfecto, ya casi! El binario se llama menubar-app (es lo que mostró el ls). Ejecuta exactamente esto:
+"/Applications/Cukcoo ENARM Aris.app/Contents/MacOS/menubar-app"
+​
+Y observa qué pasa:
+Si la Terminal se queda "colgada" sin imprimir nada → ¡buena señal! Significa que la app está corriendo. Ve a la barra superior y busca el ícono del cuckoo (recuerda hacer espacio si tienes muchos íconos — cierra alguno o revisa si tu Mac tiene notch que los oculte). Para probar, haz clic en el ícono y tu reloj debería desplegarse justo debajo.
+Si imprime un error y te regresa al prompt → pégame ese texto tal cual y con eso te doy el arreglo exacto.
+Cuéntame cuál de los dos casos te tocó. 🐕
+Captura de pantalla 2026-08-06 a la(s) 1.10.09.png
+si sale, podemos mejorar el diseño, un poco de glass como en la mac, que no se vea ese azul tan potente si no medio transparente y mas bonito con animacion
+1:11
+Pensamiento
+¡Se ve increíble tu cuckoo funcionando! 🎉 Y sí, claro que podemos darle el look "glass" de macOS: vidrio esmerilado real (como el widget del clima), quitarle el azul sólido y agregarle una animación de entrada. Primero déjame ver el código de tu sitio para saber qué colores/estilos sobreescribir:
+cukcoo-enarm-aris
+.zip
+Pensamiento
+¡Listo el rediseño! 🎨 Descarga cukcoo-enarm-aris.zip (la tarjeta de arriba). Esto es lo que cambié:
+Qué incluye el nuevo look
+Vidrio esmerilado nativo de macOS (el mismo material del widget del clima): la ventana ahora es transparente y macOS pone el desenfoque real del fondo detrás
+Adiós azul sólido: el fondo azul/morado ahora es un tinte semi-transparente sobre el vidrio — se conservan los colores según el modo (morado = enfoque, azul = descanso, rosa = terminado), pero suaves y translúcidos
+Animación pop: cada vez que hagas clic en el cuckoo, la ventana entra con un rebote suave estilo popover nativo
+Esquinas redondeadas (16px) con sombra, como los menús de macOS
+Lo mejor: no tuve que tocar tu sitio web — la app inyecta los estilos glass solo cuando corre dentro de la ventanita. En el navegador tu reloj se sigue viendo normal.
+Cómo actualizar (solo cambiaron 2 archivos)
+Descarga y descomprime el zip
+En tu repo cukcoo-enarm-aris → Add file → Upload files
+Arrastra la carpeta src-tauri completa (del zip nuevo) — GitHub reemplazará automáticamente los archivos que cambiaron (tauri.conf.json y main.rs)
+Commit changes
+Actions → Build macOS Menu Bar App → Run workflow
+Descarga el artifact, reinstala la app (reemplaza la anterior) y recuerda el comando si se bloquea:
+xattr -cr "/Applications/Cukcoo ENARM Aris.app"
+​
+Un detalle: el efecto se ve mejor con algo de contenido detrás (ventanas, fondo de pantalla) — así se nota el desenfoque tipo "frosted glass". Cuéntame cómo se ve y si quieres ajustar la intensidad de la transparencia, más oscuro o más claro, lo afinamos. 🐕✨
+y siempre será asi? si cambio el index de mi pagina no se actualizará en automatico?
+1:16
+Pensamiento
+¡Buenas noticias: sí se actualiza solo! 🐕 La app no tiene tu página "congelada" adentro — es una ventanita que carga tu sitio en vivo desde https://aristeovaladezmontero-coder.github.io/reloj/?sala=M7AF cada vez que se abre.
+Lo que se actualiza automático (sin recompilar)
+Cualquier cambio que hagas al index.html de tu repo reloj: funciones nuevas, textos, botones, el timer, etc.
+Solo espera a que GitHub Pages publique tu cambio (1-2 min) y luego cierra y vuelve a abrir la app (o haz clic al cuckoo de nuevo) para que recargue
+Lo que SÍ requiere recompilar en Actions
+Cambiar el ícono de la barra
+Cambiar el tamaño de la ventana o comportamiento nativo (animación, posición, etc.)
+Los estilos glass, con una advertencia importante ⚠️
+La advertencia del efecto glass
+El vidrio funciona detectando los colores exactos de tu sitio actual (#5366da, #02bde8, #ff2b96, etc.) y volviéndolos translúcidos. Entonces:
+Si cambias funcionalidad, textos, botones → el glass sigue funcionando perfecto
+Si algún día cambias los colores de fondo de tu sitio → la app mostrará el color nuevo tal cual (sólido, sin transparencia). No se rompe nada, solo se pierde el efecto vidrio hasta que actualicemos los colores en la app y recompiles
+Si eso pasa, me pasas los colores nuevos y te doy el archivo actualizado en 1 minuto. 👌
+dame el index que tu hicise para subirlo al repo
+1:18
+Pensamiento
+¡Ojo, aquí hay una pequeña confusión! 🐕 No hice ningún index.html nuevo — tu página del repo reloj queda intacta, no hay que tocarla ni subirle nada.
+Cómo funciona lo que hice
+Los estilos glass viven dentro de la app, no en tu página:
+El archivo main.rs (dentro de src-tauri en el zip que te di) trae los estilos incrustados
+Cuando la app abre tu sitio, se los inyecta al vuelo encima
+Por eso en el navegador tu reloj se ve normal (azul sólido), y solo dentro de la ventanita de la barra se ve glass
+Lo único que tienes que subir
+Al repo cukcoo-enarm-aris (el de la app, NO el de reloj):
+Descomprime el zip que te di arriba
+Add file → Upload files → arrastra la carpeta src-tauri
+Commit changes → Actions → Run workflow
+Nada más. Tu repo reloj no necesita ningún cambio. ✅
+(Si lo que quieres es que el efecto glass también se vea en el navegador, eso sí requeriría editar tu index.html — pero dime primero, porque en un navegador normal no hay vidrio de macOS detrás y se vería distinto.)
+index_2
+.html
+esta fue la nueva index
+1:20
+Pensamiento
+Déjame revisarla para ver si los colores cambiaron y si el efecto glass seguirá funcionando:
+cukcoo-enarm-aris
+.zip
+¡Gracias por pasármela! 🐕 Ya revisé tu nuevo index: ahora tiene 3 temas de colores (Violeta 💜, Bosque 🌲 y Medianoche 🌙), y el efecto glass que había hecho solo cubría el Violeta. Actualicé la app y te dejé el zip nuevo arriba: cukcoo-enarm-aris.zip.
+Qué actualicé
+El vidrio ahora funciona con los 3 temas: cada uno conserva su tinte (verde bosque, azul medianoche, etc.) pero translúcido sobre el vidrio de macOS
+También cubre los 3 estados de cada tema: enfoque, descanso y sesión terminada
+Afiné los selectores para que las burbujas de colores de tu pantalla de inicio no se vuelvan transparentes por accidente — solo el fondo principal
+Qué hacer
+Sube tu nuevo index.html al repo reloj (como lo tenías planeado)
+Del zip nuevo, arrastra la carpeta src-tauri al repo cukcoo-enarm-aris → Commit changes
+Actions → Run workflow → descarga el artifact → reinstala la app
+Y recuerda: los cambios de funcionalidad de tu index (el selector de temas, energía, etc.) se verán en la app automáticamente sin recompilar — solo era necesario esto porque cambiaron los colores de fondo. ✨
+puedes mejorar el diseño de ese index, pon la pagina del inicio en donde te dice que pongas el codigo de la sala para conectarte a esa sala, agrega un historia como de la sala por si alguien se sale se conecte directo a la ultima sale, pero que exista la opcion de que puedes modifar la sala para irte a otra, si todos se van de esa sala pon un temporizador de 3 horas para resetear las estadisticas, agrega frases motivaciones que se vean en chiquito, diario actualizalas, muestra la fecha y un conteo regresivo para el enarm que sera el 28 de septiembre de este año
+1:26
+Pensamiento
+¡Me encanta el plan! 🐕 Voy a mejorar tu index con: entrada directa por código de sala, memoria de la última sala (reconexión automática + opción de cambiar), reset de estadísticas tras 3 horas de sala vacía, frases motivacionales diarias, fecha y cuenta regresiva al ENARM (28 sep 2026). Primero leo el archivo completo para hacer los cambios con precisión:
+Pensamiento
+Ya tengo el mapa completo del archivo. Aplico todas las mejoras:
+Se editó el archivo
+index
+.html
+Pensamiento
+¡Listo! 🐕✨ Descarga index.html (la tarjeta de arriba) — ya trae todas las mejoras que pediste, y verifiqué que el código no tenga errores:
+Qué agregué
+Código de sala en la página de inicio 🏠
+La pantalla de bienvenida ahora tiene el campo cuckoo.enarm/ para escribir el código de sala (con Enter para continuar)
+Historial de salas y reconexión automática ↩
+Si ya entraste antes, al abrir la app te conecta directo a tu última sala sin pasar por pantallas
+Para cambiarte de sala: botón ↪ Salir (arriba a la derecha) → te lleva al inicio, donde verás chips con tus 5 salas recientes para regresar con un clic, o escribes una nueva
+En la pantalla de perfil también agregué un enlace "cambiar sala"
+Reset de estadísticas tras 3 horas de sala vacía ⏲️
+Cada quien registra su hora de salida en Firebase; cuando alguien entra a una sala que quedó vacía por más de 3 horas, se limpian automáticamente las estadísticas, metas y el timer viejo
+Frases motivacionales diarias 💬
+24 frases que rotan automáticamente cada día (aparecen en chiquito y cursiva bajo el título, tanto en el inicio como en la sala)
+Fecha y cuenta regresiva al ENARM 📅
+Muestra la fecha de hoy y "🎯 ENARM en X días" (rumbo al 28 de septiembre de 2026); el día del examen dice "¡Hoy es el ENARM! 🍀"
+Cómo subirlo
+Ve a tu repo reloj → abre index.html → lápiz ✏️ → borra todo y pega el contenido del archivo nuevo (o usa Add file → Upload files y arrastra el index.html para reemplazarlo)
+Commit changes y espera 1-2 min a que GitHub Pages publique
+Y lo mejor: como la app carga tu sitio en vivo, no necesitas recompilar nada — abre la ventanita del cuckoo y ahí estarán todos los cambios. Los colores de fondo no cambiaron, así que el efecto glass sigue intacto. 🎉
+Fable 5 consume los límites de uso más rápido que otros modelos
+Investigación
+index.html
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -42,25 +514,79 @@ input{font-family:inherit}
 <body>
 <div id="root"></div>
 <script type="module">
-
+​
 /* ========= CONFIGURACIÓN FIREBASE (reloj-enarm) ========= */
 const FIREBASE = {
   apiKey: "AIzaSyCurBiYUGckz1cpRmpTLWu_ketz12oIOoQ",
   databaseURL: "https://reloj-enarm-default-rtdb.firebaseio.com",
   projectId: "reloj-enarm"
 };
-
+​
 const root = document.getElementById("root");
 const esc = (s) => String(s ?? "").replace(/[<>&"]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));
 const params = new URLSearchParams(location.search);
 const idNuevo = () => Math.random().toString(36).slice(2, 10);
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 function fmt(s) { s = Math.floor(Math.max(0, s)); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); }
-
+​
+/* ========= frases motivacionales — rotan automáticamente cada día ========= */
+const FRASES = [
+  "Cada bloque de estudio te acerca a tu especialidad.",
+  "La constancia le gana al talento.",
+  "Hoy estudias lo que mañana salvará una vida.",
+  "Un día a la vez, una pregunta a la vez.",
+  "Tu yo del futuro te va a agradecer este esfuerzo.",
+  "No tiene que ser perfecto, tiene que ser constante.",
+  "La disciplina es el puente entre tus metas y tus logros.",
+  "Pequeños avances diarios crean resultados enormes.",
+  "El ENARM no se gana en un día, se gana todos los días.",
+  "Descansar también es parte de estudiar.",
+  "Enfócate en el proceso, el resultado llegará.",
+  "Cada repaso cuenta, aunque no lo sientas.",
+  "Estudia con intención, descansa sin culpa.",
+  "Eres más capaz de lo que crees.",
+  "La mejor inversión es la que haces en ti.",
+  "Un poco más cada día: así se construyen los sueños.",
+  "Confía en tu preparación.",
+  "Lo difícil de hoy será tu anécdota de mañana.",
+  "No cuentes los días, haz que los días cuenten.",
+  "Tu esfuerzo silencioso hará mucho ruido en los resultados.",
+  "Nadie dijo que sería fácil, pero valdrá la pena.",
+  "El éxito es la suma de pequeños esfuerzos repetidos.",
+  "Hoy también es un buen día para avanzar.",
+  "Respira, enfócate y continúa.",
+];
+function fraseDelDia() {
+  const d = new Date();
+  const dia = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+  return FRASES[dia % FRASES.length];
+}
+​
+/* ========= fecha y cuenta regresiva al ENARM ========= */
+const ENARM_FECHA = new Date(2026, 8, 28); // 28 de septiembre de 2026
+function diasParaEnarm() {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  return Math.round((ENARM_FECHA - hoy) / 86400000);
+}
+function fechaBonita() {
+  return new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
+}
+function textoEnarm() {
+  const dias = diasParaEnarm();
+  if (dias > 1) return `ENARM en ${dias} días`;
+  if (dias === 1) return "¡El ENARM es mañana!";
+  if (dias === 0) return "¡Hoy es el ENARM! 🍀";
+  return "ENARM presentado 🎓";
+}
+​
+/* ========= historial de salas recientes ========= */
+const leerSalasRecientes = () => { try { return JSON.parse(localStorage.getItem("cuckoo-salas-recientes") || "[]"); } catch (e) { return []; } };
+const guardarSalaReciente = (s) => { const l = [s, ...leerSalasRecientes().filter(x => x !== s)].slice(0, 5); localStorage.setItem("cuckoo-salas-recientes", JSON.stringify(l)); };
+​
 /* ========= estado ========= */
 const myId = idNuevo();
 const FACES = ["🧑\u200d⚕️", "👩\u200d⚕️", "🧑\u200d💻", "🧠", "📚"];
-
+​
 // tweaks: reshapean el ánimo visual completo de la app
 const PALETTES = {
   violeta: { label: "Violeta", bg: "linear-gradient(135deg,#5366da,#7060ed)", breakBg: "linear-gradient(135deg,#02bde8,#08aee7)", doneBg: "linear-gradient(135deg,#ff2b96,#ff2586)", ringBase: "#6460ec", ringBreak: "#06b8ed", ringDone: "#ff278f" },
@@ -74,9 +600,10 @@ const ENERGY = {
 };
 function getPalette() { return PALETTES[st.tweakPaleta] || PALETTES.violeta; }
 function getEnergy() { return ENERGY[st.tweakEnergia] || ENERGY.normal; }
-
+​
 const st = {
-  screen: params.get("sala") ? "profile" : "landing",
+  // Reconexión directa: si ya hay sala y nombre guardados, entra directo a la última sala
+  screen: (params.get("sala") || localStorage.getItem("cuckoo-slug")) ? (localStorage.getItem("cuckoo-nombre") ? "room" : "profile") : "landing",
   slug: (params.get("sala") || localStorage.getItem("cuckoo-slug") || "sala-enarm").trim(),
   name: localStorage.getItem("cuckoo-nombre") || "",
   face: localStorage.getItem("cuckoo-cara") || "🧑\u200d⚕️",
@@ -108,7 +635,7 @@ let latidoInterval = null;
 let presenciaInterval = null;
 let breatheTimer = null;
 let creditedFor = null;
-
+​
 /* ========= sonido / notificaciones ========= */
 function alarmSound() {
   if (!st.soundOn) return;
@@ -143,7 +670,7 @@ function showToast(msg) {
   st.toastMsg = msg; st.toastShow = true; render();
   toastTimer = setTimeout(() => { st.toastShow = false; render(); }, 1800);
 }
-
+​
 /* ========= Firebase — reemplaza localStorage+BroadcastChannel del original ========= */
 async function crearBackend() {
   const appMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
@@ -151,7 +678,7 @@ async function crearBackend() {
   const app = appMod.initializeApp(FIREBASE);
   const db = dbMod.getDatabase(app);
   let unsubs = [];
-
+​
   function refs(s) {
     return {
       gente: dbMod.ref(db, `salas/${s}/gente`),
@@ -160,14 +687,26 @@ async function crearBackend() {
       historial: dbMod.ref(db, `salas/${s}/historial`),
       miHistorial: dbMod.ref(db, `salas/${s}/historial/${myId}`),
       metas: dbMod.ref(db, `salas/${s}/metas`),
+      ultimaSalida: dbMod.ref(db, `salas/${s}/ultimaSalida`),
     };
   }
-
+​
   return {
-    unirseA(s) {
+    async unirseA(s) {
       unsubs.forEach(u => u && u()); unsubs = [];
       const r = refs(s);
+      // Si la sala llevaba 3+ horas vacía, se reinician sus estadísticas y metas
+      try {
+        const [snapGente, snapSalida] = await Promise.all([dbMod.get(r.gente), dbMod.get(r.ultimaSalida)]);
+        const gente = snapGente.val() || {};
+        const hayAlguien = Object.values(gente).some(p => Date.now() - (p.visto || 0) < 45000);
+        const ultimaSalida = snapSalida.val() || 0;
+        if (!hayAlguien && ultimaSalida && Date.now() - ultimaSalida > 3 * 3600000) {
+          await Promise.all([dbMod.remove(r.historial), dbMod.remove(r.metas), dbMod.remove(r.timer)]);
+        }
+      } catch (e) {}
       dbMod.onDisconnect(r.yo).remove();
+      dbMod.onDisconnect(r.ultimaSalida).set(dbMod.serverTimestamp());
       dbMod.set(r.yo, { nombre: st.name, cara: st.face, visto: Date.now() });
       unsubs.push(dbMod.onValue(r.gente, (snap) => { st.gente = snap.val() || {}; render(); }));
       unsubs.push(dbMod.onValue(r.timer, (snap) => {
@@ -179,7 +718,7 @@ async function crearBackend() {
       unsubs.push(dbMod.onValue(r.metas, (snap) => { st.metas = snap.val() || {}; render(); }));
     },
     latido(s) { if (!document.hidden) dbMod.update(refs(s).yo, { visto: Date.now() }); },
-    salir(s) { dbMod.remove(refs(s).yo).catch(() => {}); unsubs.forEach(u => u && u()); unsubs = []; st.gente = {}; st.timerFB = null; st.metas = {}; },
+    salir(s) { dbMod.set(refs(s).ultimaSalida, Date.now()).catch(() => {}); dbMod.remove(refs(s).yo).catch(() => {}); unsubs.forEach(u => u && u()); unsubs = []; st.gente = {}; st.timerFB = null; st.metas = {}; },
     iniciar(s, modo, minutos) { dbMod.set(refs(s).timer, { modo, duracionMs: minutos * 60000, iniciadoEn: Date.now(), pausado: false, restanteAlPausar: null }); },
     pausar(s) { const t = st.timerFB; if (!t) return; const restante = t.duracionMs - (Date.now() - t.iniciadoEn); dbMod.update(refs(s).timer, { pausado: true, restanteAlPausar: restante }); },
     reanudar(s) { const t = st.timerFB; if (!t) return; dbMod.update(refs(s).timer, { pausado: false, iniciadoEn: Date.now() - (t.duracionMs - t.restanteAlPausar) }); },
@@ -190,7 +729,7 @@ async function crearBackend() {
     quitarMeta(s, id) { dbMod.remove(dbMod.ref(db, `salas/${s}/metas/${id}`)); },
   };
 }
-
+​
 /* ========= cálculo del bloque compartido ========= */
 function restanteSegundos() {
   const t = st.timerFB;
@@ -199,7 +738,7 @@ function restanteSegundos() {
   return ms / 1000;
 }
 function modoEfectivo() { return st.timerFB ? st.timerFB.modo : st.mode; }
-
+​
 function revisarFin() {
   const t = st.timerFB;
   if (!t || t.pausado) return;
@@ -212,7 +751,7 @@ function revisarFin() {
   alarmSound();
   notify(t.modo === "work" ? "Tu sesión de enfoque terminó 🎉" : "Tu descanso terminó, ¡de vuelta al estudio!");
 }
-
+​
 /* ========= navegación / acciones ========= */
 function goProfileScreen() {
   st.slug = (st.slug || "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 20) || "sala-enarm";
@@ -223,6 +762,8 @@ async function enterRoom() {
   st.name = (st.name || "").trim().slice(0, 22) || "Invitado";
   localStorage.setItem("cuckoo-nombre", st.name);
   localStorage.setItem("cuckoo-cara", st.face);
+  localStorage.setItem("cuckoo-slug", st.slug);
+  guardarSalaReciente(st.slug);
   st.screen = "room"; render();
   try {
     if (!backend) backend = await crearBackend();
@@ -250,7 +791,7 @@ function setTimerStyle(s) { st.tweakTimerStyle = s; localStorage.setItem("cuckoo
 function toggleSound() { st.soundOn = !st.soundOn; localStorage.setItem("cuckoo-sound", st.soundOn ? "1" : "0"); render(); }
 function setFocusMin(v) { st.focusMin = Math.max(1, Math.min(240, Number(v) || 50)); localStorage.setItem("cuckoo-focusMin", st.focusMin); render(); }
 function setBreakMin(v) { st.breakMin = Math.max(1, Math.min(60, Number(v) || 10)); localStorage.setItem("cuckoo-breakMin", st.breakMin); render(); }
-
+​
 function startBreathe(min) {
   const modoInicio = st.mode;
   st.breatheCount = 3; render();
@@ -277,7 +818,7 @@ function confirmCustom() {
   startBreathe(n);
 }
 function skipBreak() { st.mode = "work"; render(); }
-
+​
 function toggle() {
   if (!backend) { mostrarAviso("No hay conexión con la sala todavía."); return; }
   if (restanteSegundos() !== null && restanteSegundos() <= 0) {
@@ -299,7 +840,7 @@ function resetTimer() {
   if (backend) backend.detener(st.slug);
   render();
 }
-
+​
 function addMeta() {
   const t = st.metaInput.trim();
   if (!t) return;
@@ -309,7 +850,7 @@ function addMeta() {
 }
 function toggleMetaClick(id, hecho) { if (backend) backend.toggleMeta(st.slug, id, hecho); }
 function removeMetaClick(id) { if (backend) backend.quitarMeta(st.slug, id); }
-
+​
 function computeStreak() {
   const mias = Object.values(st.historial[myId] || {});
   if (!mias.length) return 0;
@@ -332,7 +873,7 @@ function choiceInner(min, big, pct) {
 <span style="font-size:.6rem;opacity:.75;letter-spacing:.1em;text-transform:uppercase">min</span>
 <span style="width:${big?60:44}px;height:4px;border-radius:2px;background:rgba(255,255,255,.25);overflow:hidden"><span style="display:block;height:100%;width:${pct}%;background:#fff;border-radius:2px"></span></span>`;
 }
-
+​
 /* ========= render ========= */
 function render() {
   revisarFin();
@@ -340,7 +881,7 @@ function render() {
   if (st.screen === "profile") return renderProfile();
   if (st.screen === "room") return renderRoom();
 }
-
+​
 function renderLanding() {
   const BUBBLE_POS = [
     { left: 0, top: 55, size: 138, emoji: "🧑\u200d💻" },
@@ -375,10 +916,19 @@ ${bubbleDefs.map((b, i) => `<div style="position:absolute;left:${b.left}px;top:$
 </div>
 <div>
 <h1 style="font-family:'Manrope',sans-serif;font-size:clamp(2.4rem,5vw,4.4rem);letter-spacing:-.03em;line-height:1;margin:0 0 14px;font-weight:800">Bienvenido a Cuckoo ENARM</h1>
-<p style="font-size:1.1rem;color:rgba(255,255,255,.72);margin:0 0 38px;max-width:46ch">Un temporizador de productividad para estudiar el ENARM con amigos.</p>
-<div style="font-size:.66rem;font-weight:800;letter-spacing:.35em;text-transform:uppercase;margin-bottom:11px;color:rgba(255,255,255,.85)"></div>
+<p style="font-size:1.1rem;color:rgba(255,255,255,.72);margin:0 0 12px;max-width:46ch">Un temporizador de productividad para estudiar el ENARM con amigos.</p>
+<div style="font-size:.78rem;color:rgba(255,255,255,.82);margin:0 0 6px">📅 ${fechaBonita()} &nbsp;·&nbsp; 🎯 ${textoEnarm()}</div>
+<div style="font-size:.72rem;font-style:italic;color:rgba(255,255,255,.6);margin:0 0 30px">“${fraseDelDia()}”</div>
+<div style="font-size:.66rem;font-weight:800;letter-spacing:.35em;text-transform:uppercase;margin-bottom:11px;color:rgba(255,255,255,.85)">Código de sala</div>
 <div style="display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.7);padding:0 0 8px;font-size:1.25rem">
+<span style="opacity:.65;font-weight:600;flex-shrink:0">cuckoo.enarm/</span>
+<input id="in-slug" value="${esc(st.slug)}" maxlength="20" placeholder="mi-sala" autocomplete="off" style="flex:1;background:transparent;border:0;outline:0;color:#fff;font-size:1.25rem;font-weight:700;min-width:0">
 </div>
+${(() => { const rs = leerSalasRecientes(); return rs.length ? `
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px">
+<span style="font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.55)">Recientes</span>
+${rs.map(s => `<button data-sala="${esc(s)}" class="btn-sala-reciente" style="border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);color:#fff;padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:700;cursor:pointer;transition:.2s">↩ ${esc(s)}</button>`).join("")}
+</div>` : ""; })()}
 <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:16px">
 <button id="btn-saltar" style="border:0;color:#fff;cursor:pointer;background:rgba(31,50,139,.28);padding:10px 22px;border-radius:8px;font-family:inherit;font-size:.95rem;transition:.2s">Saltar</button>
 <button id="btn-continuar" aria-label="Avanza" style="border:0;color:#fff;cursor:pointer;display:flex;align-items:center;gap:10px;height:42px;padding:0 22px;background:rgba(31,50,139,.38);font-size:.95rem;font-weight:700;letter-spacing:.04em;border-radius:8px;transition:.25s">Avanza <span style="font-size:1.3rem;display:inline-block;animation:nudgeRight ${e.bounce}s ease-in-out infinite">⟶</span></button>
@@ -389,8 +939,17 @@ ${bubbleDefs.map((b, i) => `<div style="position:absolute;left:${b.left}px;top:$
 </div>`;
   document.getElementById("btn-saltar").addEventListener("click", goProfileScreen);
   document.getElementById("btn-continuar").addEventListener("click", goProfileScreen);
+  const inSlug = document.getElementById("in-slug");
+  if (inSlug) {
+    inSlug.addEventListener("input", e => st.slug = e.target.value);
+    inSlug.addEventListener("keydown", e => { if (e.key === "Enter") goProfileScreen(); });
+  }
+  document.querySelectorAll(".btn-sala-reciente").forEach(b => b.addEventListener("click", () => {
+    st.slug = b.dataset.sala;
+    if (st.name) { localStorage.setItem("cuckoo-slug", st.slug); enterRoom(); } else goProfileScreen();
+  }));
 }
-
+​
 function renderProfile() {
   const pal = getPalette(), e = getEnergy();
   root.innerHTML = `
@@ -400,6 +959,10 @@ function renderProfile() {
 <div style="display:flex;align-items:center;gap:8px;font-family:'Manrope',sans-serif;font-weight:800;font-size:1.1rem;margin-bottom:28px">CUCKO<span style="display:inline-block;width:11px;height:11px;border:3px solid currentColor;border-radius:50%;margin-left:2px"></span></div>
 <h2 style="margin:0 0 8px;font-size:2rem;font-family:'Manrope',sans-serif">Crea tu perfil</h2>
 <p style="color:rgba(255,255,255,.7);margin:0">Así te verán tus compañeros dentro de esta sala.</p>
+<div style="display:flex;align-items:center;gap:10px;margin-top:12px;font-size:.8rem">
+<span style="background:rgba(255,255,255,.14);padding:5px 12px;border-radius:16px;font-weight:700;letter-spacing:.05em">🏠 ${esc(st.slug)}</span>
+<button id="btn-cambiar-sala" style="border:0;background:transparent;color:rgba(255,255,255,.7);text-decoration:underline;cursor:pointer;font-size:.78rem;font-family:inherit">cambiar sala</button>
+</div>
 <input id="in-nombre" placeholder="Tu nombre" maxlength="22" value="${esc(st.name)}" style="width:100%;margin:16px 0;padding:14px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);color:#fff;outline:0;border-radius:10px;font-family:inherit;font-size:1rem">
 <div id="caras" style="display:flex;gap:10px;margin:4px 0 22px;flex-wrap:wrap"></div>
 <button id="btn-entrar" style="width:100%;border:0;background:#fff;color:#5360d8;padding:15px 22px;border-radius:10px;font-weight:800;cursor:pointer;font-family:inherit;font-size:1rem;transition:.2s">Entrar a la sala →</button>
@@ -418,8 +981,9 @@ function renderProfile() {
   });
   document.getElementById("in-nombre").addEventListener("input", e => st.name = e.target.value);
   document.getElementById("btn-entrar").addEventListener("click", enterRoom);
+  const bcs = document.getElementById("btn-cambiar-sala"); if (bcs) bcs.addEventListener("click", goLandingScreen);
 }
-
+​
 function renderRoom() {
   const modo = modoEfectivo();
   const restante = restanteSegundos();
@@ -429,7 +993,7 @@ function renderRoom() {
   const enPick = !hayTimer && !respirando;
   const enTimerFase = hayTimer && !terminado && !respirando;
   const running = enTimerFase && !st.timerFB.pausado;
-
+​
   const pal = getPalette(), en = getEnergy();
   const roomGrad = terminado ? pal.doneBg : (modo === "break" ? pal.breakBg : pal.bg);
   const ringInnerBg = terminado ? pal.ringDone : (modo === "break" ? pal.ringBreak : pal.ringBase);
@@ -440,7 +1004,7 @@ function renderRoom() {
   const finishText = modo === "work" ? "¡Sesión de enfoque terminada! 🎉" : "¡Descanso terminado! 🎉";
   const noticeText = terminado ? `¡Tu sesión de ${modo === "work" ? "enfoque" : "descanso"} terminó!` : "Te uniste a esta Cuckoo justo ahora";
   const breatheCaption = ({ 3: "Prepárate", 2: "Respira", 1: "Silencio" })[st.breatheCount] || "Silencio";
-
+​
   // gente REAL de Firebase, filtrada a quien mandó señal de vida hace poco
   const PRESENCIA_MS = 45000;
   const ahora = Date.now();
@@ -461,13 +1025,13 @@ function renderRoom() {
   const promedioGrupo = allMembers.length ? Math.round(minutesToday / allMembers.length) : 0;
   const metasList = Object.entries(st.metas || {}).map(([id, m]) => ({ id, ...m })).sort((a, b) => (a.ts || 0) - (b.ts || 0));
   const metasHechas = metasList.filter(m => m.hecho).length;
-
+​
   const workChoices = [25, 50, 90], breakChoices = [5, 10, 15];
-
+​
   root.innerHTML = `
 <div style="min-height:100vh;position:relative;overflow-x:hidden;font-family:'Inter',ui-sans-serif,system-ui,sans-serif;color:#fff;background:${roomGrad};background-size:200% 200%;animation:gradientShift ${en.grad}s ease infinite">
 <div style="position:fixed;z-index:50;bottom:25px;left:50%;background:#fff;color:#3d48b5;padding:12px 18px;border-radius:8px;font-weight:700;font-size:.9rem;${st.toastShow ? "opacity:1;transform:translate(-50%,0);transition:.3s" : "opacity:0;transform:translate(-50%,16px);transition:.3s;pointer-events:none"}">${esc(st.toastMsg)}</div>
-
+​
 <div style="position:relative;z-index:2">
 <div style="position:fixed;top:26px;left:34px;display:flex;align-items:center;gap:8px;font-family:'Manrope',sans-serif;font-weight:800;font-size:1.15rem;letter-spacing:.04em;z-index:5">
 <span style="display:flex;align-items:center">CUCKO<span style="display:inline-block;width:10px;height:10px;border:3px solid currentColor;border-radius:50%;margin-left:2px"></span></span>
@@ -479,12 +1043,14 @@ function renderRoom() {
 <button id="btn-ajustes" title="Ajustes" style="border:0;background:transparent;color:rgba(255,255,255,.75);font-size:1.3rem;cursor:pointer;width:32px;height:32px;transition:.2s">⚙</button>
 <button id="btn-salir" title="Salir" style="border:0;background:transparent;color:rgba(255,255,255,.75);font-size:1.3rem;cursor:pointer;width:32px;height:32px;transition:.2s">↪</button>
 </div>
-
+​
 <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:100px 24px 40px;text-align:center">
-<div style="font-size:.95rem;letter-spacing:.5em;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:50px">${modeTitleText}</div>
-
+<div style="font-size:.95rem;letter-spacing:.5em;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:12px">${modeTitleText}</div>
+<div style="font-size:.72rem;color:rgba(255,255,255,.72);margin-bottom:6px">📅 ${fechaBonita()} &nbsp;·&nbsp; 🎯 ${textoEnarm()}</div>
+<div style="font-size:.7rem;font-style:italic;color:rgba(255,255,255,.55);max-width:360px;margin-bottom:34px">“${fraseDelDia()}”</div>
+​
 <div style="min-height:280px;display:grid;place-items:center;position:relative;width:100%">
-
+​
 ${enPick ? `
 <div style="display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap;max-width:420px;animation:popIn .35s ease">
 ${modo === "work" ? `
@@ -507,7 +1073,7 @@ ${breakChoices.map((min, i) => {
 }).join("")}
 <button id="btn-saltar-descanso" class="btn-dur" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:92px;height:108px;border-radius:24px;border:1px dashed rgba(255,255,255,.5);background:rgba(255,255,255,.05);color:#fff;font-size:.62rem;font-weight:700;cursor:pointer;line-height:1.3;font-family:inherit;opacity:0;animation:cardIn .5s cubic-bezier(.2,.8,.3,1) .32s both">SALTAR<br>DESCANSO</button>`}
 </div>` : ""}
-
+​
 ${respirando ? `
 <div style="display:flex;flex-direction:column;align-items:center;gap:26px;animation:popIn .4s ease">
 <div style="width:190px;height:190px;border-radius:50%;border:5px solid rgba(255,255,255,.85);display:grid;place-items:center;animation:breathePulse ${en.breathe}s ease-in-out infinite">
@@ -515,7 +1081,7 @@ ${respirando ? `
 </div>
 <div style="font-size:1rem;letter-spacing:.4em;text-transform:uppercase;font-weight:700;color:rgba(255,255,255,.9)">${breatheCaption}</div>
 </div>` : ""}
-
+​
 ${enTimerFase && st.tweakTimerStyle !== "minimal" ? `
 <div id="anillo" style="width:260px;height:260px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#fff calc(${ringPercent}*1%),rgba(255,255,255,.22) 0);position:relative;animation:pulseGlow ${en.pulse}s ease-in-out infinite">
 <div style="position:absolute;inset:6px;border-radius:50%;transition:background .5s;background:${ringInnerBg}"></div>
@@ -524,7 +1090,7 @@ ${enTimerFase && st.tweakTimerStyle !== "minimal" ? `
 <div style="font-size:.68rem;letter-spacing:.5em;margin-top:22px;color:rgba(255,255,255,.72)">${pauseLabel}</div>
 </div>
 </div>` : ""}
-
+​
 ${enTimerFase && st.tweakTimerStyle === "minimal" ? `
 <div style="display:flex;flex-direction:column;align-items:center;gap:18px;animation:popIn .3s ease">
 <div id="digits" style="font-size:4.4rem;font-weight:300;letter-spacing:.01em;font-variant-numeric:tabular-nums">${fmt(restante)}</div>
@@ -533,7 +1099,7 @@ ${enTimerFase && st.tweakTimerStyle === "minimal" ? `
 <div id="barra-minimal" style="height:100%;width:${ringPercent}%;background:#fff;border-radius:3px;transition:width .5s"></div>
 </div>
 </div>` : ""}
-
+​
 ${terminado ? `
 <div style="position:relative;width:100%;max-width:400px;height:260px;display:grid;place-items:center">
 <div style="position:absolute;inset:0;pointer-events:none;overflow:hidden">
@@ -544,19 +1110,19 @@ ${terminado ? `
 </div>
 <div style="background:rgba(223,31,114,.32);padding:28px 34px;border-radius:16px;font-size:1.4rem;text-align:center;font-weight:600">${finishText}</div>
 </div>` : ""}
-
+​
 </div>
 <div style="display:flex;justify-content:center;gap:16px;margin-top:44px">
 <button id="btn-toggle" class="btn-cta-primary" style="border:0;background:linear-gradient(120deg,rgba(255,255,255,.2) 0%,rgba(255,255,255,.42) 50%,rgba(255,255,255,.2) 100%);background-size:220% 100%;animation:shimmerSweep 3.2s ease-in-out infinite;color:#fff;letter-spacing:.22em;font-size:.78rem;cursor:pointer;font-weight:700;padding:14px 28px;border-radius:30px">${startLabel}</button>
 <button id="btn-reset" class="btn-cta-primary" style="border:0;background:transparent;color:rgba(255,255,255,.8);letter-spacing:.22em;font-size:.78rem;cursor:pointer;font-weight:700;padding:14px 28px">REINICIAR</button>
 </div>
-
+​
 <div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:60px;color:rgba(255,255,255,.6);font-size:.62rem;letter-spacing:.15em;text-transform:uppercase">
 <span>Desliza para ver estadísticas</span>
 <span style="font-size:1.1rem;animation:bounceHint ${en.bounce}s ease-in-out infinite">⌄</span>
 </div>
 </div>
-
+​
 <div style="display:flex;justify-content:center;padding:20px 24px 10px">
 <div style="width:min(560px,100%);display:flex;flex-direction:column;align-items:center;gap:14px">
 <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
@@ -570,10 +1136,10 @@ ${allMembers.map(m => `<span title="${esc(m.nombre)}" style="width:46px;height:4
 </div>
 </div>
 </div>
-
+​
 <div style="display:flex;justify-content:center;padding:40px 24px 100px">
 <div style="width:min(960px,100%);display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;align-items:start">
-
+​
 <div style="background:rgba(255,255,255,.08);border-radius:20px;padding:26px;text-align:left">
 <h3 style="margin:0 0 4px;font-family:'Manrope',sans-serif;font-size:1.15rem;font-weight:800">Metas de la sala</h3>
 <p style="margin:0 0 18px;font-size:.78rem;color:rgba(255,255,255,.6)">Objetivos compartidos: cualquiera puede agregarlos y marcarlos.</p>
@@ -592,7 +1158,7 @@ ${metasList.length ? metasList.map(m => `
 </div>
 ${metasList.length ? `<div style="margin-top:14px;font-size:.75rem;color:rgba(255,255,255,.6)">${metasHechas} de ${metasList.length} completadas</div>` : ""}
 </div>
-
+​
 <div style="background:rgba(255,255,255,.08);border-radius:20px;padding:26px;text-align:left">
 <h3 style="margin:0 0 18px;font-family:'Manrope',sans-serif;font-size:1.15rem;font-weight:800">Estadísticas de la sala</h3>
 <div style="display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap">
@@ -625,10 +1191,10 @@ ${memberStats.length ? memberStats.map((ms, idx) => `
 </div>`).join("") : `<div style="color:rgba(255,255,255,.5);font-size:.85rem">Nadie ha completado un bloque todavía.</div>`}
 </div>
 </div>
-
+​
 </div>
 </div>
-
+​
 ${st.detailsOpen ? `
 <div style="position:fixed;inset:0;background:rgba(25,25,93,.97);z-index:20;padding:40px 26px;overflow:auto;text-align:left;animation:fadeUp .3s ease">
 <div style="width:min(480px,100%);margin:0 auto">
@@ -643,34 +1209,34 @@ ${st.detailsOpen ? `
 <button id="btn-sonido" style="width:100%;margin-top:10px;border:1px solid rgba(255,255,255,.34);background:transparent;color:#fff;padding:13px;border-radius:8px;font-weight:700;cursor:pointer">${st.soundOn ? "🔔 Sonido y notificaciones activadas" : "🔕 Sonido y notificaciones desactivadas"}</button>
 </div>
 </div>` : ""}
-
+​
 ${st.tweaksOpen ? `
 <div style="position:fixed;inset:0;background:rgba(25,25,93,.97);z-index:20;padding:40px 26px;overflow:auto;text-align:left;animation:fadeUp .3s ease">
 <div style="width:min(480px,100%);margin:0 auto">
 <button id="btn-cerrar-tweaks" style="float:right;border:0;background:transparent;color:#fff;font-size:1.6rem;cursor:pointer">×</button>
 <h2 style="margin:6px 0 6px;clear:both;font-family:'Manrope',sans-serif;font-size:1.3rem">Apariencia</h2>
 <p style="margin:0 0 24px;font-size:.8rem;color:rgba(255,255,255,.6)">Cambia el ánimo visual de la sala para todos.</p>
-
+​
 <div style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:10px">Paleta</div>
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:26px">
 ${Object.entries(PALETTES).map(([key, p]) => `<button data-paleta="${key}" class="btn-paleta" style="padding:10px 16px;border-radius:20px;border:2px solid ${st.tweakPaleta===key?"#fff":"rgba(255,255,255,.25)"};cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:700;color:#fff;background:${p.bg}">${p.label}</button>`).join("")}
 </div>
-
+​
 <div style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:10px">Energía visual</div>
 <div style="display:flex;gap:10px;margin-bottom:26px">
 ${[["calma","Calma"],["normal","Normal"],["viva","Viva"]].map(([key,label]) => `<button data-energia="${key}" class="btn-energia" style="flex:1;padding:10px;border-radius:10px;border:0;cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:700;background:${st.tweakEnergia===key?"#fff":"rgba(255,255,255,.12)"};color:${st.tweakEnergia===key?"#5360d8":"#fff"}">${label}</button>`).join("")}
 </div>
-
+​
 <div style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:10px">Estilo del temporizador</div>
 <div style="display:flex;gap:10px">
 ${[["anillo","Anillo"],["minimal","Minimalista"]].map(([key,label]) => `<button data-timerstyle="${key}" class="btn-timerstyle" style="flex:1;padding:10px;border-radius:10px;border:0;cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:700;background:${st.tweakTimerStyle===key?"#fff":"rgba(255,255,255,.12)"};color:${st.tweakTimerStyle===key?"#5360d8":"#fff"}">${label}</button>`).join("")}
 </div>
-
+​
 </div>
 </div>` : ""}
 </div>
 </div>`;
-
+​
   document.querySelectorAll(".btn-dur").forEach(b => b.addEventListener("click", () => selectDurationClick(Number(b.dataset.min))));
   const bca = document.getElementById("btn-custom-abrir"); if (bca) bca.addEventListener("click", openCustom);
   const bco = document.getElementById("btn-custom-ok"); if (bco) bco.addEventListener("click", () => { st.customValue = document.getElementById("in-custom").value; confirmCustom(); });
@@ -696,7 +1262,7 @@ ${[["anillo","Anillo"],["minimal","Minimalista"]].map(([key,label]) => `<button 
   document.querySelectorAll(".btn-energia").forEach(b => b.addEventListener("click", () => setEnergia(b.dataset.energia)));
   document.querySelectorAll(".btn-timerstyle").forEach(b => b.addEventListener("click", () => setTimerStyle(b.dataset.timerstyle)));
 }
-
+​
 /* ========= "tick" ligero: solo toca los números y el anillo, nunca reconstruye la pantalla ========= */
 function tick() {
   if (st.screen !== "room" || st.breatheCount !== null) return;
@@ -713,12 +1279,18 @@ function tick() {
   const barra = document.getElementById("barra-minimal");
   if (barra) barra.style.width = pct + "%";
 }
-
+​
 /* ========= arranque ========= */
-render();
+// Reconexión directa: si ya tienes nombre y sala guardados, entras de inmediato a tu última sala
+if (st.screen === "room" && st.name) {
+  enterRoom();
+} else {
+  if (st.screen === "room") st.screen = "profile";
+  render();
+}
 clearInterval(renderInterval);
 renderInterval = setInterval(tick, 250);
-
+​
 // señal de vida cada 20s (solo si la ventana está a la vista) — así, quien deja
 // la app abierta en segundo plano sin verla deja de contar como "conectado"
 clearInterval(latidoInterval);
@@ -726,10 +1298,12 @@ latidoInterval = setInterval(() => { if (backend && st.screen === "room") backen
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden && backend && st.screen === "room") backend.latido(st.slug);
 });
-
+​
 // refresco lento para que los perfiles vencidos desaparezcan aunque nadie más cambie nada
 clearInterval(presenciaInterval);
 presenciaInterval = setInterval(() => { if (st.screen === "room") render(); }, 15000);
 </script>
 </body>
 </html>
+​
+La IA de Notion terminó.Código copiado en el portapapeles
