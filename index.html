@@ -16,20 +16,33 @@ body{overflow-x:hidden}
 button{cursor:pointer;font-family:inherit}
 input{font-family:inherit}
 @keyframes floatYNormal{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-16px) rotate(2deg)}}
+@keyframes floatYSlow{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(12px,-22px) scale(1.06)}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 @keyframes popIn{from{opacity:0;transform:scale(.75)}to{opacity:1;transform:scale(1)}}
 @keyframes gradientShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 @keyframes pulseGlow{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.28);transform:scale(1)}50%{box-shadow:0 0 0 20px rgba(255,255,255,0);transform:scale(1.018)}}
 @keyframes breathePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
 @keyframes bounceHint{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(6px);opacity:1}}
+@keyframes nudgeRight{0%,100%{transform:translateX(0)}50%{transform:translateX(7px)}}
 @keyframes confettiFall{0%{transform:translateY(-10px) rotate(0deg);opacity:1}100%{transform:translateY(170px) rotate(340deg);opacity:0}}
+@keyframes cardIn{from{opacity:0;transform:translateY(24px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes floatCard{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes shimmerSweep{0%{background-position:0% 0}100%{background-position:200% 0}}
+.btn-dur{transition:transform .28s cubic-bezier(.2,.8,.3,1),box-shadow .28s,border-color .28s,background .28s}
+.btn-dur:hover{transform:translateY(-8px);border-color:#fff;background:rgba(255,255,255,.24)}
+.btn-dur:active{transform:translateY(-2px) scale(.97)}
+.plus-icon{display:inline-block;transition:transform .3s}
+#btn-custom-abrir:hover .plus-icon{transform:rotate(90deg)}
+.btn-cta-primary{transition:transform .2s,box-shadow .2s}
+.btn-cta-primary:hover{transform:translateY(-3px) scale(1.03);box-shadow:0 10px 26px rgba(0,0,0,.3)}
+.btn-cta-primary:active{transform:scale(.97)}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <div id="root"></div>
-
 <script type="module">
+
 /* ========= CONFIGURACIÓN FIREBASE (reloj-enarm) ========= */
 const FIREBASE = {
   apiKey: "AIzaSyCurBiYUGckz1cpRmpTLWu_ketz12oIOoQ",
@@ -48,6 +61,20 @@ function fmt(s) { s = Math.floor(Math.max(0, s)); return String(Math.floor(s / 6
 const myId = idNuevo();
 const FACES = ["🧑\u200d⚕️", "👩\u200d⚕️", "🧑\u200d💻", "🧠", "📚"];
 
+// tweaks: reshapean el ánimo visual completo de la app
+const PALETTES = {
+  violeta: { label: "Violeta", bg: "linear-gradient(135deg,#5366da,#7060ed)", breakBg: "linear-gradient(135deg,#02bde8,#08aee7)", doneBg: "linear-gradient(135deg,#ff2b96,#ff2586)", ringBase: "#6460ec", ringBreak: "#06b8ed", ringDone: "#ff278f" },
+  bosque: { label: "Bosque", bg: "linear-gradient(135deg,#1f8a5f,#2fae7a)", breakBg: "linear-gradient(135deg,#12b3a8,#0e8f8a)", doneBg: "linear-gradient(135deg,#e8a23c,#d97b2b)", ringBase: "#279368", ringBreak: "#0f9c92", ringDone: "#dd8a30" },
+  medianoche: { label: "Medianoche", bg: "linear-gradient(135deg,#242b52,#3a3d7a)", breakBg: "linear-gradient(135deg,#1f6f8b,#164f66)", doneBg: "linear-gradient(135deg,#b23a6b,#8c2c56)", ringBase: "#31386b", ringBreak: "#1c6883", ringDone: "#a53865" },
+};
+const ENERGY = {
+  calma: { grad: 24, float: 10, pulse: 9, bounce: 2.6, breathe: 1.6 },
+  normal: { grad: 16, float: 7, pulse: 6.5, bounce: 1.8, breathe: 1 },
+  viva: { grad: 9, float: 4, pulse: 4, bounce: 1.1, breathe: .6 },
+};
+function getPalette() { return PALETTES[st.tweakPaleta] || PALETTES.violeta; }
+function getEnergy() { return ENERGY[st.tweakEnergia] || ENERGY.normal; }
+
 const st = {
   screen: params.get("sala") ? "profile" : "landing",
   slug: (params.get("sala") || localStorage.getItem("cuckoo-slug") || "sala-enarm").trim(),
@@ -61,15 +88,18 @@ const st = {
   customOpen: false,
   customValue: 50,
   detailsOpen: false,
-  detailsTab: "ajustes",
+  tweaksOpen: false,
+  tweakPaleta: localStorage.getItem("cuckoo-paleta") || "violeta",
+  tweakEnergia: localStorage.getItem("cuckoo-energia") || "normal",
+  tweakTimerStyle: localStorage.getItem("cuckoo-estilotimer") || "anillo",
   soundOn: localStorage.getItem("cuckoo-sound") !== "0",
-  taskInput: "",
-  tasks: [],
+  metaInput: "",
   toastMsg: "",
   toastShow: false,
   gente: {},       // gente REAL conectada — nunca inventada
   timerFB: null,   // estado compartido del bloque actual, o null
   historial: {},   // { personId: { pushId: {fecha, minutos, modo} } }
+  metas: {},       // { pushId: {texto, hecho, autor, cara, ts} } — metas compartidas de la sala
 };
 let backend = null;
 let toastTimer = null;
@@ -129,6 +159,7 @@ async function crearBackend() {
       timer: dbMod.ref(db, `salas/${s}/timer`),
       historial: dbMod.ref(db, `salas/${s}/historial`),
       miHistorial: dbMod.ref(db, `salas/${s}/historial/${myId}`),
+      metas: dbMod.ref(db, `salas/${s}/metas`),
     };
   }
 
@@ -145,14 +176,18 @@ async function crearBackend() {
         st.timerFB = nuevo; render();
       }));
       unsubs.push(dbMod.onValue(r.historial, (snap) => { st.historial = snap.val() || {}; render(); }));
+      unsubs.push(dbMod.onValue(r.metas, (snap) => { st.metas = snap.val() || {}; render(); }));
     },
     latido(s) { if (!document.hidden) dbMod.update(refs(s).yo, { visto: Date.now() }); },
-    salir(s) { dbMod.remove(refs(s).yo).catch(() => {}); unsubs.forEach(u => u && u()); unsubs = []; st.gente = {}; st.timerFB = null; },
+    salir(s) { dbMod.remove(refs(s).yo).catch(() => {}); unsubs.forEach(u => u && u()); unsubs = []; st.gente = {}; st.timerFB = null; st.metas = {}; },
     iniciar(s, modo, minutos) { dbMod.set(refs(s).timer, { modo, duracionMs: minutos * 60000, iniciadoEn: Date.now(), pausado: false, restanteAlPausar: null }); },
     pausar(s) { const t = st.timerFB; if (!t) return; const restante = t.duracionMs - (Date.now() - t.iniciadoEn); dbMod.update(refs(s).timer, { pausado: true, restanteAlPausar: restante }); },
     reanudar(s) { const t = st.timerFB; if (!t) return; dbMod.update(refs(s).timer, { pausado: false, iniciadoEn: Date.now() - (t.duracionMs - t.restanteAlPausar) }); },
     detener(s) { dbMod.set(refs(s).timer, null); },
     acreditar(s, minutos, modo) { dbMod.push(refs(s).miHistorial, { fecha: hoyISO(), minutos, modo }); },
+    agregarMeta(s, texto) { dbMod.push(refs(s).metas, { texto, hecho: false, autor: st.name, cara: st.face, ts: Date.now() }); },
+    toggleMeta(s, id, hecho) { dbMod.update(dbMod.ref(db, `salas/${s}/metas/${id}`), { hecho: !hecho }); },
+    quitarMeta(s, id) { dbMod.remove(dbMod.ref(db, `salas/${s}/metas/${id}`)); },
   };
 }
 
@@ -196,7 +231,6 @@ async function enterRoom() {
     backend = null;
     mostrarAviso("No se pudo conectar con la sala. Revisa tu conexión.");
   }
-  try { st.tasks = JSON.parse(localStorage.getItem(`cuckoo-metas-${st.slug}`) || "[]"); } catch (e) {}
   history.replaceState(null, "", `?sala=${encodeURIComponent(st.slug)}`);
 }
 function goLandingScreen() {
@@ -206,9 +240,13 @@ function goLandingScreen() {
 }
 function addMemberPrompt() { showToast("Comparte el enlace para invitar a alguien"); }
 function changeMode() { st.mode = st.mode === "work" ? "break" : "work"; render(); }
-function openDetailsInfo() { st.detailsOpen = true; st.detailsTab = "ajustes"; render(); }
+function openDetailsInfo() { st.detailsOpen = true; render(); }
 function closeDetails() { st.detailsOpen = false; render(); }
-function setTabClick(tab) { st.detailsTab = tab; render(); }
+function openTweaks() { st.tweaksOpen = true; render(); }
+function closeTweaks() { st.tweaksOpen = false; render(); }
+function setPaleta(p) { st.tweakPaleta = p; localStorage.setItem("cuckoo-paleta", p); render(); }
+function setEnergia(e) { st.tweakEnergia = e; localStorage.setItem("cuckoo-energia", e); render(); }
+function setTimerStyle(s) { st.tweakTimerStyle = s; localStorage.setItem("cuckoo-estilotimer", s); render(); }
 function toggleSound() { st.soundOn = !st.soundOn; localStorage.setItem("cuckoo-sound", st.soundOn ? "1" : "0"); render(); }
 function setFocusMin(v) { st.focusMin = Math.max(1, Math.min(240, Number(v) || 50)); localStorage.setItem("cuckoo-focusMin", st.focusMin); render(); }
 function setBreakMin(v) { st.breakMin = Math.max(1, Math.min(60, Number(v) || 10)); localStorage.setItem("cuckoo-breakMin", st.breakMin); render(); }
@@ -262,16 +300,15 @@ function resetTimer() {
   render();
 }
 
-function addTask() {
-  const t = st.taskInput.trim();
+function addMeta() {
+  const t = st.metaInput.trim();
   if (!t) return;
-  st.tasks = [...st.tasks, { id: Date.now(), text: t, done: false }];
-  st.taskInput = "";
-  localStorage.setItem(`cuckoo-metas-${st.slug}`, JSON.stringify(st.tasks));
+  if (backend) backend.agregarMeta(st.slug, t);
+  st.metaInput = "";
   render();
 }
-function toggleTaskClick(id) { st.tasks = st.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t); localStorage.setItem(`cuckoo-metas-${st.slug}`, JSON.stringify(st.tasks)); render(); }
-function removeTaskClick(id) { st.tasks = st.tasks.filter(t => t.id !== id); localStorage.setItem(`cuckoo-metas-${st.slug}`, JSON.stringify(st.tasks)); render(); }
+function toggleMetaClick(id, hecho) { if (backend) backend.toggleMeta(st.slug, id, hecho); }
+function removeMetaClick(id) { if (backend) backend.quitarMeta(st.slug, id); }
 
 function computeStreak() {
   const mias = Object.values(st.historial[myId] || {});
@@ -282,11 +319,18 @@ function computeStreak() {
   while (dias.has(d.toISOString().slice(0, 10))) { streak++; d.setDate(d.getDate() - 1); }
   return streak;
 }
-function choiceStyle(min, big, flashed) {
-  const size = big ? 108 : 84;
-  let style = `display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:${size}px;height:${size}px;border-radius:50%;border:4px solid rgba(255,255,255,.78);background:transparent;color:#fff;cursor:pointer;transition:.3s;font-family:inherit`;
-  if (flashed) style += ";transform:scale(1.22);box-shadow:0 0 50px rgba(255,255,255,.85);background:rgba(255,255,255,.28);border-color:#fff";
+function choiceStyle(min, big, flashed, idx, pct) {
+  const w = big ? 112 : 92;
+  const h = big ? 132 : 108;
+  let style = `display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;width:${w}px;height:${h}px;border-radius:24px;border:${big ? "2px" : "1px"} solid rgba(255,255,255,${big ? ".9" : ".32"});background:${big ? "rgba(255,255,255,.2)" : "rgba(255,255,255,.06)"};color:#fff;cursor:pointer;font-family:inherit;position:relative;box-shadow:${big ? "0 18px 36px rgba(15,20,60,.32)" : "0 8px 18px rgba(15,20,60,.16)"};opacity:0;animation:cardIn .5s cubic-bezier(.2,.8,.3,1) ${idx*0.08}s both${big ? ",floatCard 3.6s ease-in-out 1s infinite" : ""}`;
+  if (flashed) style += ";transform:scale(1.08);background:rgba(255,255,255,.34);border-color:#fff;box-shadow:0 0 40px rgba(255,255,255,.7)";
   return style;
+}
+function choiceInner(min, big, pct) {
+  return `${big ? `<span style="position:absolute;top:-11px;left:50%;transform:translateX(-50%);font-size:.55rem;font-weight:800;letter-spacing:.08em;background:#fff;color:#5360d8;padding:3px 9px;border-radius:10px;white-space:nowrap">RECOMENDADO</span>` : ""}
+<span style="font-size:${big?"2.3rem":"1.5rem"};font-weight:800;line-height:1">${min}</span>
+<span style="font-size:.6rem;opacity:.75;letter-spacing:.1em;text-transform:uppercase">min</span>
+<span style="width:${big?60:44}px;height:4px;border-radius:2px;background:rgba(255,255,255,.25);overflow:hidden"><span style="display:block;height:100%;width:${pct}%;background:#fff;border-radius:2px"></span></span>`;
 }
 
 /* ========= render ========= */
@@ -298,48 +342,59 @@ function render() {
 }
 
 function renderLanding() {
-  const bubbleDefs = [
-    { left: 0, top: 70, size: 170, bg: "linear-gradient(145deg,#08c7ed 55%,#ff3e91 55%)", emoji: "🧑\u200d💻" },
-    { left: 145, top: 45, size: 135, bg: "linear-gradient(145deg,#21c980,#139eca)", emoji: "📚" },
-    { left: 265, top: 70, size: 145, bg: "linear-gradient(145deg,#03d0ea,#4d64d5)", emoji: "👩\u200d⚕️" },
-    { left: 70, top: 230, size: 130, bg: "linear-gradient(145deg,#ffb731,#ef5f3f)", emoji: "☕" },
-    { left: 200, top: 210, size: 168, bg: "linear-gradient(145deg,#3c246f,#7159df)", emoji: "🧠" },
+  const BUBBLE_POS = [
+    { left: 0, top: 55, size: 138, emoji: "🧑\u200d💻" },
+    { left: 118, top: 10, size: 86, emoji: "📚" },
+    { left: 188, top: 42, size: 110, emoji: "👩\u200d⚕️" },
+    { left: 36, top: 206, size: 98, emoji: "☕" },
+    { left: 140, top: 174, size: 142, emoji: "🧠" },
+    { left: 228, top: 188, size: 70, emoji: "✏️" },
+    { left: 4, top: 314, size: 80, emoji: "⏱️" },
+    { left: 172, top: 322, size: 68, emoji: "📖" },
   ];
+  const BUBBLE_COLORS = {
+    violeta: { main: ["linear-gradient(145deg,#08c7ed 55%,#ff3e91 55%)", "linear-gradient(145deg,#21c980,#139eca)", "linear-gradient(145deg,#03d0ea,#4d64d5)", "linear-gradient(145deg,#ffb731,#ef5f3f)", "linear-gradient(145deg,#3c246f,#7159df)", "linear-gradient(145deg,#ff6fb5,#ff3e91)", "linear-gradient(145deg,#ffd76a,#ffb731)", "linear-gradient(145deg,#7de0ff,#08c7ed)"], glow: ["rgba(8,199,237,.5)", "rgba(255,62,145,.42)"] },
+    bosque: { main: ["linear-gradient(145deg,#2fe0a0 55%,#0e8f8a 55%)", "linear-gradient(145deg,#8bd450,#2fae7a)", "linear-gradient(145deg,#12b3a8,#1f6f5a)", "linear-gradient(145deg,#e8a23c,#d97b2b)", "linear-gradient(145deg,#1f4d3a,#2f8a5f)", "linear-gradient(145deg,#f2c94c,#e8a23c)", "linear-gradient(145deg,#7be0c4,#12b3a8)", "linear-gradient(145deg,#a3e635,#65a30d)"], glow: ["rgba(47,224,160,.45)", "rgba(232,162,60,.4)"] },
+    medianoche: { main: ["linear-gradient(145deg,#5b6ee8 55%,#a53865 55%)", "linear-gradient(145deg,#8b7cf0,#3a3d7a)", "linear-gradient(145deg,#1c6883,#242b52)", "linear-gradient(145deg,#d9a441,#a53865)", "linear-gradient(145deg,#242b52,#5b6ee8)", "linear-gradient(145deg,#ff8fb0,#a53865)", "linear-gradient(145deg,#f4d06f,#d9a441)", "linear-gradient(145deg,#6fd6e8,#1c6883)"], glow: ["rgba(91,110,232,.45)", "rgba(165,56,101,.4)"] },
+  };
+  const colors = BUBBLE_COLORS[st.tweakPaleta] || BUBBLE_COLORS.violeta;
+  const bubbleDefs = BUBBLE_POS.map((p, i) => ({ ...p, bg: colors.main[i] }));
+  const glowDefs = [{ left: -34, top: 20, size: 170 }, { left: 110, top: 230, size: 170 }].map((g, i) => ({ ...g, color: colors.glow[i] }));
+  const pal = getPalette(), e = getEnergy();
   root.innerHTML = `
-<div style="min-height:100vh;position:relative;overflow-x:hidden;font-family:'Inter',ui-sans-serif,system-ui,sans-serif;color:#fff;background:linear-gradient(135deg,#5366da,#7060ed);background-size:200% 200%;animation:gradientShift 16s ease infinite">
+<div style="min-height:100vh;position:relative;overflow-x:hidden;font-family:'Inter',ui-sans-serif,system-ui,sans-serif;color:#fff;background:${pal.bg};background-size:200% 200%;animation:gradientShift ${e.grad}s ease infinite">
 <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:50px;position:relative;z-index:2;animation:fadeUp .5s ease">
 <div style="position:absolute;top:26px;left:34px;display:flex;align-items:center;gap:8px;font-family:'Manrope',sans-serif;font-weight:800;font-size:1.2rem;letter-spacing:.04em">
 <span style="display:flex;align-items:center">CUCKO<span style="display:inline-block;width:11px;height:11px;border:3px solid currentColor;border-radius:50%;margin-left:2px"></span></span>
 <span style="font-size:.62rem;font-weight:800;letter-spacing:.16em;background:rgba(255,255,255,.16);padding:4px 8px;border-radius:20px">ENARM</span>
 </div>
 <div style="width:min(1120px,100%);display:grid;grid-template-columns:.9fr 1.1fr;align-items:center;gap:70px">
-<div style="height:440px;position:relative" aria-hidden="true">
-${bubbleDefs.map((b, i) => `<div style="position:absolute;left:${b.left}px;top:${b.top}px;width:${b.size}px;height:${b.size}px;border-radius:50%;background:${b.bg};display:grid;place-items:center;box-shadow:0 28px 60px rgba(21,25,73,.28);border:1px solid rgba(255,255,255,.2);animation:floatYNormal ${7+i*0.6}s ease-in-out infinite;animation-delay:${i*0.3}s"><b style="font-size:3rem;filter:drop-shadow(0 8px 10px rgba(0,0,0,.15))">${b.emoji}</b></div>`).join("")}
+<div style="height:420px;max-width:300px;position:relative;overflow:visible" aria-hidden="true">
+${glowDefs.map((g, i) => `<div style="position:absolute;left:${g.left}px;top:${g.top}px;width:${g.size}px;height:${g.size}px;border-radius:50%;background:${g.color};filter:blur(34px);animation:floatYSlow ${e.float+4+i*2}s ease-in-out infinite;animation-delay:${i*0.6}s"></div>`).join("")}
+${bubbleDefs.map((b, i) => `<div style="position:absolute;left:${b.left}px;top:${b.top}px;width:${b.size}px;height:${b.size}px;border-radius:50%;background:${b.bg};display:grid;place-items:center;box-shadow:0 28px 60px rgba(21,25,73,.28);border:1px solid rgba(255,255,255,.2);animation:floatYNormal ${e.float+i*0.6}s ease-in-out infinite;animation-delay:${i*0.3}s"><b style="font-size:${b.size>140?"3rem":"2.1rem"};filter:drop-shadow(0 8px 10px rgba(0,0,0,.15))">${b.emoji}</b></div>`).join("")}
 </div>
 <div>
 <h1 style="font-family:'Manrope',sans-serif;font-size:clamp(2.4rem,5vw,4.4rem);letter-spacing:-.03em;line-height:1;margin:0 0 14px;font-weight:800">Bienvenido a Cuckoo ENARM</h1>
 <p style="font-size:1.1rem;color:rgba(255,255,255,.72);margin:0 0 38px;max-width:46ch">Un temporizador de productividad para estudiar el ENARM con amigos.</p>
-<div style="font-size:.66rem;font-weight:800;letter-spacing:.35em;text-transform:uppercase;margin-bottom:11px;color:rgba(255,255,255,.85)">Crea un enlace compartible</div>
+<div style="font-size:.66rem;font-weight:800;letter-spacing:.35em;text-transform:uppercase;margin-bottom:11px;color:rgba(255,255,255,.85)"></div>
 <div style="display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.7);padding:0 0 8px;font-size:1.25rem">
-<span style="color:rgba(255,255,255,.72);white-space:nowrap">cuckoo.enarm/</span>
-<input id="in-slug" value="${esc(st.slug)}" maxlength="20" style="width:100%;border:0;background:transparent;color:#37ffb1;outline:0;font-size:inherit;padding:0 5px;font-family:inherit">
 </div>
 <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:16px">
 <button id="btn-saltar" style="border:0;color:#fff;cursor:pointer;background:rgba(31,50,139,.28);padding:10px 22px;border-radius:8px;font-family:inherit;font-size:.95rem;transition:.2s">Saltar</button>
-<button id="btn-continuar" aria-label="Continuar" style="border:0;color:#fff;cursor:pointer;width:78px;height:42px;background:rgba(31,50,139,.38);font-size:1.5rem;border-radius:8px;transition:.25s">⟶</button>
+<button id="btn-continuar" aria-label="Avanza" style="border:0;color:#fff;cursor:pointer;display:flex;align-items:center;gap:10px;height:42px;padding:0 22px;background:rgba(31,50,139,.38);font-size:.95rem;font-weight:700;letter-spacing:.04em;border-radius:8px;transition:.25s">Avanza <span style="font-size:1.3rem;display:inline-block;animation:nudgeRight ${e.bounce}s ease-in-out infinite">⟶</span></button>
 </div>
 </div>
 </div>
 </div>
 </div>`;
-  document.getElementById("in-slug").addEventListener("input", e => st.slug = e.target.value);
   document.getElementById("btn-saltar").addEventListener("click", goProfileScreen);
   document.getElementById("btn-continuar").addEventListener("click", goProfileScreen);
 }
 
 function renderProfile() {
+  const pal = getPalette(), e = getEnergy();
   root.innerHTML = `
-<div style="min-height:100vh;position:relative;overflow-x:hidden;font-family:'Inter',ui-sans-serif,system-ui,sans-serif;color:#fff;background:linear-gradient(135deg,#5366da,#7060ed);background-size:200% 200%;animation:gradientShift 16s ease infinite">
+<div style="min-height:100vh;position:relative;overflow-x:hidden;font-family:'Inter',ui-sans-serif,system-ui,sans-serif;color:#fff;background:${pal.bg};background-size:200% 200%;animation:gradientShift ${e.grad}s ease infinite">
 <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:30px;position:relative;z-index:2">
 <div style="width:min(430px,100%);background:rgba(40,36,121,.32);border:1px solid rgba(255,255,255,.24);backdrop-filter:blur(20px);padding:34px;border-radius:16px;box-shadow:0 30px 70px rgba(21,27,84,.35);animation:popIn .4s ease">
 <div style="display:flex;align-items:center;gap:8px;font-family:'Manrope',sans-serif;font-weight:800;font-size:1.1rem;margin-bottom:28px">CUCKO<span style="display:inline-block;width:11px;height:11px;border:3px solid currentColor;border-radius:50%;margin-left:2px"></span></div>
@@ -375,8 +430,9 @@ function renderRoom() {
   const enTimerFase = hayTimer && !terminado && !respirando;
   const running = enTimerFase && !st.timerFB.pausado;
 
-  const roomGrad = terminado ? "linear-gradient(135deg,#ff2b96,#ff2586)" : (modo === "break" ? "linear-gradient(135deg,#02bde8,#08aee7)" : "linear-gradient(135deg,#5366da,#7060ed)");
-  const ringInnerBg = terminado ? "#ff278f" : (modo === "break" ? "#06b8ed" : "#6460ec");
+  const pal = getPalette(), en = getEnergy();
+  const roomGrad = terminado ? pal.doneBg : (modo === "break" ? pal.breakBg : pal.bg);
+  const ringInnerBg = terminado ? pal.ringDone : (modo === "break" ? pal.ringBreak : pal.ringBase);
   const ringPercent = hayTimer ? Math.round(((st.timerFB.duracionMs / 1000 - restante) / (st.timerFB.duracionMs / 1000)) * 100) : 0;
   const modeTitleText = modo === "work" ? "TIEMPO DE ENFOQUE" : "TIEMPO DE DESCANSO";
   const pauseLabel = !running ? "PAUSADO" : (modo === "work" ? "ENFOCADO" : "DESCANSANDO");
@@ -399,13 +455,17 @@ function renderRoom() {
   const streak = computeStreak();
   const memberStats = conectadosEntries.map(([pid, p]) => ({
     face: p.cara, name: p.nombre,
-    label: planos.filter(h => h.pid === pid && h.fecha === hoy).reduce((s, h) => s + h.minutos, 0) + " min",
-  }));
+    minutes: planos.filter(h => h.pid === pid && h.fecha === hoy).reduce((s, h) => s + h.minutos, 0),
+  })).sort((a, b) => b.minutes - a.minutes);
+  const maxMin = Math.max(1, ...memberStats.map(m => m.minutes), 1);
+  const promedioGrupo = allMembers.length ? Math.round(minutesToday / allMembers.length) : 0;
+  const metasList = Object.entries(st.metas || {}).map(([id, m]) => ({ id, ...m })).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  const metasHechas = metasList.filter(m => m.hecho).length;
 
   const workChoices = [25, 50, 90], breakChoices = [5, 10, 15];
 
   root.innerHTML = `
-<div style="min-height:100vh;position:relative;overflow-x:hidden;font-family:'Inter',ui-sans-serif,system-ui,sans-serif;color:#fff;background:${roomGrad};background-size:200% 200%;animation:gradientShift 16s ease infinite">
+<div style="min-height:100vh;position:relative;overflow-x:hidden;font-family:'Inter',ui-sans-serif,system-ui,sans-serif;color:#fff;background:${roomGrad};background-size:200% 200%;animation:gradientShift ${en.grad}s ease infinite">
 <div style="position:fixed;z-index:50;bottom:25px;left:50%;background:#fff;color:#3d48b5;padding:12px 18px;border-radius:8px;font-weight:700;font-size:.9rem;${st.toastShow ? "opacity:1;transform:translate(-50%,0);transition:.3s" : "opacity:0;transform:translate(-50%,16px);transition:.3s;pointer-events:none"}">${esc(st.toastMsg)}</div>
 
 <div style="position:relative;z-index:2">
@@ -415,6 +475,7 @@ function renderRoom() {
 </div>
 <div style="position:fixed;top:24px;right:30px;display:flex;gap:14px;z-index:5;background:rgba(0,0,0,.14);padding:10px 14px;border-radius:30px;backdrop-filter:blur(6px)">
 <button id="btn-modo" title="Cambiar modo" style="border:0;background:transparent;color:rgba(255,255,255,.75);font-size:1.3rem;cursor:pointer;width:32px;height:32px;transition:.2s">⌛</button>
+<button id="btn-tweaks" title="Apariencia" style="border:0;background:transparent;color:rgba(255,255,255,.75);font-size:1.3rem;cursor:pointer;width:32px;height:32px;transition:.2s">🎨</button>
 <button id="btn-ajustes" title="Ajustes" style="border:0;background:transparent;color:rgba(255,255,255,.75);font-size:1.3rem;cursor:pointer;width:32px;height:32px;transition:.2s">⚙</button>
 <button id="btn-salir" title="Salir" style="border:0;background:transparent;color:rgba(255,255,255,.75);font-size:1.3rem;cursor:pointer;width:32px;height:32px;transition:.2s">↪</button>
 </div>
@@ -427,32 +488,49 @@ function renderRoom() {
 ${enPick ? `
 <div style="display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap;max-width:420px;animation:popIn .35s ease">
 ${modo === "work" ? `
-${workChoices.map(min => `<button data-min="${min}" class="btn-dur" style="${choiceStyle(min, min === 50, st.flashMin === min)}"><span style="font-size:${min===50?"2rem":"1.2rem"};font-weight:600">${min}</span><span style="font-size:.6rem;opacity:.75;letter-spacing:.08em;text-transform:uppercase">min</span></button>`).join("")}
+${workChoices.map((min, i) => {
+  const big = min === 50;
+  const pct = Math.round(min / Math.max(...workChoices) * 100);
+  return `<button data-min="${min}" class="btn-dur" style="${choiceStyle(min, big, st.flashMin === min, i, pct)}">${choiceInner(min, big, pct)}</button>`;
+}).join("")}
 ${st.customOpen ? `
 <div style="display:flex;gap:8px;align-items:center">
 <input id="in-custom" type="number" min="1" max="240" value="${st.customValue}" style="width:80px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.12);color:#fff;font-family:inherit;font-size:1rem">
 <button id="btn-custom-ok" style="width:56px;height:56px;border-radius:50%;border:4px solid rgba(255,255,255,.78);background:transparent;color:#fff;font-size:1.2rem;cursor:pointer">✓</button>
 </div>` : `
-<button id="btn-custom-abrir" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:78px;height:78px;border-radius:50%;border:4px solid rgba(255,255,255,.78);background:transparent;color:#fff;font-size:1.5rem;cursor:pointer;transition:.3s;font-family:inherit">+</button>`}
+<button id="btn-custom-abrir" class="btn-dur" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:92px;height:108px;border-radius:24px;border:1px dashed rgba(255,255,255,.5);background:rgba(255,255,255,.05);color:#fff;font-size:1.5rem;cursor:pointer;font-family:inherit;opacity:0;animation:cardIn .5s cubic-bezier(.2,.8,.3,1) .32s both"><span class="plus-icon">+</span><span style="font-size:.55rem;opacity:.7;letter-spacing:.08em;text-transform:uppercase;margin-top:4px">otro</span></button>`}
 ` : `
-${breakChoices.map(min => `<button data-min="${min}" class="btn-dur" style="${choiceStyle(min, min === 10, st.flashMin === min)}"><span style="font-size:${min===10?"2rem":"1.2rem"};font-weight:600">${min}</span><span style="font-size:.6rem;opacity:.75;letter-spacing:.08em;text-transform:uppercase">min</span></button>`).join("")}
-<button id="btn-saltar-descanso" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:78px;height:78px;border-radius:50%;border:4px solid rgba(255,255,255,.78);background:transparent;color:#fff;font-size:.62rem;font-weight:700;cursor:pointer;transition:.3s;line-height:1.3;font-family:inherit">SALTAR<br>DESCANSO</button>`}
+${breakChoices.map((min, i) => {
+  const big = min === 10;
+  const pct = Math.round(min / Math.max(...breakChoices) * 100);
+  return `<button data-min="${min}" class="btn-dur" style="${choiceStyle(min, big, st.flashMin === min, i, pct)}">${choiceInner(min, big, pct)}</button>`;
+}).join("")}
+<button id="btn-saltar-descanso" class="btn-dur" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:92px;height:108px;border-radius:24px;border:1px dashed rgba(255,255,255,.5);background:rgba(255,255,255,.05);color:#fff;font-size:.62rem;font-weight:700;cursor:pointer;line-height:1.3;font-family:inherit;opacity:0;animation:cardIn .5s cubic-bezier(.2,.8,.3,1) .32s both">SALTAR<br>DESCANSO</button>`}
 </div>` : ""}
 
 ${respirando ? `
 <div style="display:flex;flex-direction:column;align-items:center;gap:26px;animation:popIn .4s ease">
-<div style="width:190px;height:190px;border-radius:50%;border:5px solid rgba(255,255,255,.85);display:grid;place-items:center;animation:breathePulse 1s ease-in-out infinite">
+<div style="width:190px;height:190px;border-radius:50%;border:5px solid rgba(255,255,255,.85);display:grid;place-items:center;animation:breathePulse ${en.breathe}s ease-in-out infinite">
 <span style="font-size:4rem;font-weight:300">${st.breatheCount}</span>
 </div>
 <div style="font-size:1rem;letter-spacing:.4em;text-transform:uppercase;font-weight:700;color:rgba(255,255,255,.9)">${breatheCaption}</div>
 </div>` : ""}
 
-${enTimerFase ? `
-<div id="anillo" style="width:260px;height:260px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#fff calc(${ringPercent}*1%),rgba(255,255,255,.22) 0);position:relative;animation:pulseGlow 6.5s ease-in-out infinite">
+${enTimerFase && st.tweakTimerStyle !== "minimal" ? `
+<div id="anillo" style="width:260px;height:260px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#fff calc(${ringPercent}*1%),rgba(255,255,255,.22) 0);position:relative;animation:pulseGlow ${en.pulse}s ease-in-out infinite">
 <div style="position:absolute;inset:6px;border-radius:50%;transition:background .5s;background:${ringInnerBg}"></div>
 <div style="position:relative;z-index:1;text-align:center">
 <div id="digits" style="font-size:3.4rem;font-weight:300;letter-spacing:.01em;font-variant-numeric:tabular-nums">${fmt(restante)}</div>
 <div style="font-size:.68rem;letter-spacing:.5em;margin-top:22px;color:rgba(255,255,255,.72)">${pauseLabel}</div>
+</div>
+</div>` : ""}
+
+${enTimerFase && st.tweakTimerStyle === "minimal" ? `
+<div style="display:flex;flex-direction:column;align-items:center;gap:18px;animation:popIn .3s ease">
+<div id="digits" style="font-size:4.4rem;font-weight:300;letter-spacing:.01em;font-variant-numeric:tabular-nums">${fmt(restante)}</div>
+<div style="font-size:.68rem;letter-spacing:.5em;color:rgba(255,255,255,.72)">${pauseLabel}</div>
+<div style="width:260px;height:6px;background:rgba(255,255,255,.22);border-radius:3px;overflow:hidden">
+<div id="barra-minimal" style="height:100%;width:${ringPercent}%;background:#fff;border-radius:3px;transition:width .5s"></div>
 </div>
 </div>` : ""}
 
@@ -469,13 +547,13 @@ ${terminado ? `
 
 </div>
 <div style="display:flex;justify-content:center;gap:16px;margin-top:44px">
-<button id="btn-toggle" style="border:0;background:rgba(255,255,255,.16);color:#fff;letter-spacing:.22em;font-size:.78rem;cursor:pointer;font-weight:700;padding:14px 28px;border-radius:30px;transition:.2s">${startLabel}</button>
-<button id="btn-reset" style="border:0;background:transparent;color:rgba(255,255,255,.8);letter-spacing:.22em;font-size:.78rem;cursor:pointer;font-weight:700;padding:14px 28px">REINICIAR</button>
+<button id="btn-toggle" class="btn-cta-primary" style="border:0;background:linear-gradient(120deg,rgba(255,255,255,.2) 0%,rgba(255,255,255,.42) 50%,rgba(255,255,255,.2) 100%);background-size:220% 100%;animation:shimmerSweep 3.2s ease-in-out infinite;color:#fff;letter-spacing:.22em;font-size:.78rem;cursor:pointer;font-weight:700;padding:14px 28px;border-radius:30px">${startLabel}</button>
+<button id="btn-reset" class="btn-cta-primary" style="border:0;background:transparent;color:rgba(255,255,255,.8);letter-spacing:.22em;font-size:.78rem;cursor:pointer;font-weight:700;padding:14px 28px">REINICIAR</button>
 </div>
 
-<div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:60px;color:rgba(255,255,255,.6);font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;animation:bounceHint 1.8s ease-in-out infinite">
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:60px;color:rgba(255,255,255,.6);font-size:.62rem;letter-spacing:.15em;text-transform:uppercase">
 <span>Desliza para ver estadísticas</span>
-<span style="font-size:1.1rem">⌄</span>
+<span style="font-size:1.1rem;animation:bounceHint ${en.bounce}s ease-in-out infinite">⌄</span>
 </div>
 </div>
 
@@ -494,31 +572,60 @@ ${allMembers.map(m => `<span title="${esc(m.nombre)}" style="width:46px;height:4
 </div>
 
 <div style="display:flex;justify-content:center;padding:40px 24px 100px">
-<div style="width:min(720px,100%)">
-<h3 style="margin:0 0 20px;font-family:'Manrope',sans-serif;font-size:1.3rem;font-weight:800;text-align:center">Estadísticas de la sala</h3>
-<div style="display:flex;gap:14px;margin-bottom:26px;flex-wrap:wrap">
-<div style="flex:1;min-width:140px;background:rgba(255,255,255,.1);border-radius:16px;padding:22px;text-align:center">
-<div style="font-size:2rem;font-weight:800">${blocksToday}</div>
-<div style="font-size:.72rem;color:rgba(255,255,255,.65);margin-top:4px;letter-spacing:.05em;text-transform:uppercase">bloques hoy</div>
+<div style="width:min(960px,100%);display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;align-items:start">
+
+<div style="background:rgba(255,255,255,.08);border-radius:20px;padding:26px;text-align:left">
+<h3 style="margin:0 0 4px;font-family:'Manrope',sans-serif;font-size:1.15rem;font-weight:800">Metas de la sala</h3>
+<p style="margin:0 0 18px;font-size:.78rem;color:rgba(255,255,255,.6)">Objetivos compartidos: cualquiera puede agregarlos y marcarlos.</p>
+<div style="display:flex;gap:8px;margin-bottom:16px">
+<input id="in-meta" placeholder="Agregar una meta..." value="${esc(st.metaInput)}" style="flex:1;padding:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);color:#fff;border-radius:8px;font-family:inherit;font-size:.88rem">
+<button id="btn-agregar-meta" style="border:0;background:#fff;color:#5360d8;padding:0 16px;border-radius:8px;font-weight:800;cursor:pointer">＋</button>
 </div>
-<div style="flex:1;min-width:140px;background:rgba(255,255,255,.1);border-radius:16px;padding:22px;text-align:center">
-<div style="font-size:2rem;font-weight:800">${minutesToday}</div>
-<div style="font-size:.72rem;color:rgba(255,255,255,.65);margin-top:4px;letter-spacing:.05em;text-transform:uppercase">min hoy</div>
+<div style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow:auto">
+${metasList.length ? metasList.map(m => `
+<div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.08);padding:10px 12px;border-radius:10px">
+<button data-id="${m.id}" data-hecho="${m.hecho ? 1 : 0}" class="btn-meta-check" style="border:0;background:transparent;font-size:1.1rem;cursor:pointer;color:#fff;flex-shrink:0">${m.hecho ? "✅" : "○"}</button>
+<span style="flex:1;font-size:.88rem;${m.hecho ? "text-decoration:line-through;opacity:.5" : ""}">${esc(m.texto)}</span>
+<span title="${esc(m.autor || "")}" style="font-size:.95rem;flex-shrink:0">${esc(m.cara || "")}</span>
+<button data-id="${m.id}" class="btn-meta-quitar" style="border:0;background:transparent;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.05rem;flex-shrink:0">×</button>
+</div>`).join("") : `<p style="color:rgba(255,255,255,.45);font-style:italic;margin:4px 0;font-size:.85rem">Aún no hay metas. Agrega la primera.</p>`}
 </div>
-<div style="flex:1;min-width:140px;background:rgba(255,255,255,.1);border-radius:16px;padding:22px;text-align:center">
-<div style="font-size:2rem;font-weight:800">🔥${streak}</div>
-<div style="font-size:.72rem;color:rgba(255,255,255,.65);margin-top:4px;letter-spacing:.05em;text-transform:uppercase">racha</div>
+${metasList.length ? `<div style="margin-top:14px;font-size:.75rem;color:rgba(255,255,255,.6)">${metasHechas} de ${metasList.length} completadas</div>` : ""}
+</div>
+
+<div style="background:rgba(255,255,255,.08);border-radius:20px;padding:26px;text-align:left">
+<h3 style="margin:0 0 18px;font-family:'Manrope',sans-serif;font-size:1.15rem;font-weight:800">Estadísticas de la sala</h3>
+<div style="display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap">
+<div style="flex:1;min-width:110px;background:rgba(255,255,255,.1);border-radius:14px;padding:16px;text-align:center">
+<div style="font-size:1.6rem;font-weight:800">${blocksToday}</div>
+<div style="font-size:.66rem;color:rgba(255,255,255,.65);margin-top:4px;letter-spacing:.05em;text-transform:uppercase">bloques hoy</div>
+</div>
+<div style="flex:1;min-width:110px;background:rgba(255,255,255,.1);border-radius:14px;padding:16px;text-align:center">
+<div style="font-size:1.6rem;font-weight:800">${minutesToday}</div>
+<div style="font-size:.66rem;color:rgba(255,255,255,.65);margin-top:4px;letter-spacing:.05em;text-transform:uppercase">min hoy</div>
+</div>
+<div style="flex:1;min-width:110px;background:rgba(255,255,255,.1);border-radius:14px;padding:16px;text-align:center">
+<div style="font-size:1.6rem;font-weight:800">${promedioGrupo}</div>
+<div style="font-size:.66rem;color:rgba(255,255,255,.65);margin-top:4px;letter-spacing:.05em;text-transform:uppercase">prom./persona</div>
+</div>
+<div style="flex:1;min-width:110px;background:rgba(255,255,255,.1);border-radius:14px;padding:16px;text-align:center">
+<div style="font-size:1.6rem;font-weight:800">🔥${streak}</div>
+<div style="font-size:.66rem;color:rgba(255,255,255,.65);margin-top:4px;letter-spacing:.05em;text-transform:uppercase">tu racha</div>
 </div>
 </div>
-<div style="font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:10px">Por integrante</div>
+<div style="font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:10px">Por integrante hoy</div>
 <div style="display:flex;flex-direction:column;gap:10px">
-${memberStats.length ? memberStats.map(ms => `
-<div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.08);border-radius:12px;padding:12px 16px">
-<span style="width:36px;height:36px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:1.1rem;flex-shrink:0">${esc(ms.face)}</span>
-<span style="flex:1;font-size:.95rem">${esc(ms.name)}</span>
-<span style="font-size:.88rem;color:rgba(255,255,255,.7)">${ms.label}</span>
+${memberStats.length ? memberStats.map((ms, idx) => `
+<div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.08);border-radius:12px;padding:10px 14px">
+<span style="width:32px;height:32px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:1rem;flex-shrink:0">${esc(ms.face)}</span>
+<div style="flex:1;min-width:0">
+<div style="display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:5px;gap:8px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${idx === 0 && ms.minutes > 0 ? "🏆 " : ""}${esc(ms.name)}</span><span style="color:rgba(255,255,255,.7);flex-shrink:0">${ms.minutes} min</span></div>
+<div style="height:5px;background:rgba(255,255,255,.15);border-radius:3px"><div style="height:100%;width:${Math.round(ms.minutes / maxMin * 100)}%;background:#fff;border-radius:3px"></div></div>
+</div>
 </div>`).join("") : `<div style="color:rgba(255,255,255,.5);font-size:.85rem">Nadie ha completado un bloque todavía.</div>`}
 </div>
+</div>
+
 </div>
 </div>
 
@@ -526,12 +633,7 @@ ${st.detailsOpen ? `
 <div style="position:fixed;inset:0;background:rgba(25,25,93,.97);z-index:20;padding:40px 26px;overflow:auto;text-align:left;animation:fadeUp .3s ease">
 <div style="width:min(480px,100%);margin:0 auto">
 <button id="btn-cerrar-ajustes" style="float:right;border:0;background:transparent;color:#fff;font-size:1.6rem;cursor:pointer">×</button>
-<div style="display:flex;gap:8px;margin:6px 0 24px;clear:both">
-<button data-tab="ajustes" class="tab-btn" style="padding:8px 14px;border-radius:20px;border:0;cursor:pointer;font-size:.75rem;font-weight:700;font-family:inherit;background:${st.detailsTab==="ajustes"?"#fff":"rgba(255,255,255,.12)"};color:${st.detailsTab==="ajustes"?"#5360d8":"#fff"}">Ajustes</button>
-<button data-tab="metas" class="tab-btn" style="padding:8px 14px;border-radius:20px;border:0;cursor:pointer;font-size:.75rem;font-weight:700;font-family:inherit;background:${st.detailsTab==="metas"?"#fff":"rgba(255,255,255,.12)"};color:${st.detailsTab==="metas"?"#5360d8":"#fff"}">Metas</button>
-</div>
-
-${st.detailsTab === "ajustes" ? `
+<h2 style="margin:6px 0 24px;clear:both;font-family:'Manrope',sans-serif;font-size:1.3rem">Ajustes</h2>
 <label style="display:block;font-size:.7rem;margin-top:8px">Estudio predeterminado (min)
 <input id="in-focus" type="number" min="1" max="240" value="${st.focusMin}" style="width:100%;padding:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);color:#fff;margin-top:5px;border-radius:8px;font-family:inherit">
 </label>
@@ -539,22 +641,31 @@ ${st.detailsTab === "ajustes" ? `
 <input id="in-break" type="number" min="1" max="60" value="${st.breakMin}" style="width:100%;padding:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);color:#fff;margin-top:5px;border-radius:8px;font-family:inherit">
 </label>
 <button id="btn-sonido" style="width:100%;margin-top:10px;border:1px solid rgba(255,255,255,.34);background:transparent;color:#fff;padding:13px;border-radius:8px;font-weight:700;cursor:pointer">${st.soundOn ? "🔔 Sonido y notificaciones activadas" : "🔕 Sonido y notificaciones desactivadas"}</button>
-` : `
-<p style="color:rgba(255,255,255,.7);margin-top:8px">Anota lo que quieres lograr mientras estudias.</p>
-<div style="display:flex;gap:8px;margin:14px 0">
-<input id="in-tarea" placeholder="Nueva meta..." value="${esc(st.taskInput)}" style="flex:1;padding:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);color:#fff;border-radius:8px;font-family:inherit">
-<button id="btn-agregar-tarea" style="border:0;background:#fff;color:#5360d8;padding:0 18px;border-radius:8px;font-weight:800;cursor:pointer">＋</button>
 </div>
-<div style="display:flex;flex-direction:column;gap:8px">
-${st.tasks.map(t => `
-<div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.08);padding:10px 12px;border-radius:8px">
-<button data-id="${t.id}" class="btn-check" style="border:0;background:transparent;font-size:1.1rem;cursor:pointer;color:#fff">${t.done ? "✅" : "○"}</button>
-<span style="flex:1;${t.done ? "text-decoration:line-through;opacity:.55" : ""}">${esc(t.text)}</span>
-<button data-id="${t.id}" class="btn-quitar" style="border:0;background:transparent;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.1rem">×</button>
-</div>`).join("")}
+</div>` : ""}
+
+${st.tweaksOpen ? `
+<div style="position:fixed;inset:0;background:rgba(25,25,93,.97);z-index:20;padding:40px 26px;overflow:auto;text-align:left;animation:fadeUp .3s ease">
+<div style="width:min(480px,100%);margin:0 auto">
+<button id="btn-cerrar-tweaks" style="float:right;border:0;background:transparent;color:#fff;font-size:1.6rem;cursor:pointer">×</button>
+<h2 style="margin:6px 0 6px;clear:both;font-family:'Manrope',sans-serif;font-size:1.3rem">Apariencia</h2>
+<p style="margin:0 0 24px;font-size:.8rem;color:rgba(255,255,255,.6)">Cambia el ánimo visual de la sala para todos.</p>
+
+<div style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:10px">Paleta</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:26px">
+${Object.entries(PALETTES).map(([key, p]) => `<button data-paleta="${key}" class="btn-paleta" style="padding:10px 16px;border-radius:20px;border:2px solid ${st.tweakPaleta===key?"#fff":"rgba(255,255,255,.25)"};cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:700;color:#fff;background:${p.bg}">${p.label}</button>`).join("")}
 </div>
-${st.tasks.length === 0 ? `<p style="color:rgba(255,255,255,.45);font-style:italic;margin-top:14px">Aún no hay metas. Agrega la primera.</p>` : ""}
-`}
+
+<div style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:10px">Energía visual</div>
+<div style="display:flex;gap:10px;margin-bottom:26px">
+${[["calma","Calma"],["normal","Normal"],["viva","Viva"]].map(([key,label]) => `<button data-energia="${key}" class="btn-energia" style="flex:1;padding:10px;border-radius:10px;border:0;cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:700;background:${st.tweakEnergia===key?"#fff":"rgba(255,255,255,.12)"};color:${st.tweakEnergia===key?"#5360d8":"#fff"}">${label}</button>`).join("")}
+</div>
+
+<div style="font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:10px">Estilo del temporizador</div>
+<div style="display:flex;gap:10px">
+${[["anillo","Anillo"],["minimal","Minimalista"]].map(([key,label]) => `<button data-timerstyle="${key}" class="btn-timerstyle" style="flex:1;padding:10px;border-radius:10px;border:0;cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:700;background:${st.tweakTimerStyle===key?"#fff":"rgba(255,255,255,.12)"};color:${st.tweakTimerStyle===key?"#5360d8":"#fff"}">${label}</button>`).join("")}
+</div>
+
 </div>
 </div>` : ""}
 </div>
@@ -571,15 +682,19 @@ ${st.tasks.length === 0 ? `<p style="color:rgba(255,255,255,.45);font-style:ital
   document.getElementById("btn-salir").addEventListener("click", goLandingScreen);
   document.getElementById("btn-invitar").addEventListener("click", addMemberPrompt);
   const bce = document.getElementById("btn-cerrar-ajustes"); if (bce) bce.addEventListener("click", closeDetails);
-  document.querySelectorAll(".tab-btn").forEach(b => b.addEventListener("click", () => setTabClick(b.dataset.tab)));
   const inFocus = document.getElementById("in-focus"); if (inFocus) inFocus.addEventListener("change", e => setFocusMin(e.target.value));
   const inBreak = document.getElementById("in-break"); if (inBreak) inBreak.addEventListener("change", e => setBreakMin(e.target.value));
   const bsonido = document.getElementById("btn-sonido"); if (bsonido) bsonido.addEventListener("click", toggleSound);
-  const inTarea = document.getElementById("in-tarea");
-  if (inTarea) { inTarea.addEventListener("input", e => st.taskInput = e.target.value); inTarea.addEventListener("keydown", e => { if (e.key === "Enter") addTask(); }); }
-  const bat = document.getElementById("btn-agregar-tarea"); if (bat) bat.addEventListener("click", addTask);
-  document.querySelectorAll(".btn-check").forEach(b => b.addEventListener("click", () => toggleTaskClick(Number(b.dataset.id))));
-  document.querySelectorAll(".btn-quitar").forEach(b => b.addEventListener("click", () => removeTaskClick(Number(b.dataset.id))));
+  const inMeta = document.getElementById("in-meta");
+  if (inMeta) { inMeta.addEventListener("input", e => st.metaInput = e.target.value); inMeta.addEventListener("keydown", e => { if (e.key === "Enter") addMeta(); }); }
+  const bam = document.getElementById("btn-agregar-meta"); if (bam) bam.addEventListener("click", addMeta);
+  document.querySelectorAll(".btn-meta-check").forEach(b => b.addEventListener("click", () => toggleMetaClick(b.dataset.id, b.dataset.hecho === "1")));
+  document.querySelectorAll(".btn-meta-quitar").forEach(b => b.addEventListener("click", () => removeMetaClick(b.dataset.id)));
+  const btw = document.getElementById("btn-tweaks"); if (btw) btw.addEventListener("click", openTweaks);
+  const bct = document.getElementById("btn-cerrar-tweaks"); if (bct) bct.addEventListener("click", closeTweaks);
+  document.querySelectorAll(".btn-paleta").forEach(b => b.addEventListener("click", () => setPaleta(b.dataset.paleta)));
+  document.querySelectorAll(".btn-energia").forEach(b => b.addEventListener("click", () => setEnergia(b.dataset.energia)));
+  document.querySelectorAll(".btn-timerstyle").forEach(b => b.addEventListener("click", () => setTimerStyle(b.dataset.timerstyle)));
 }
 
 /* ========= "tick" ligero: solo toca los números y el anillo, nunca reconstruye la pantalla ========= */
@@ -590,13 +705,13 @@ function tick() {
   const restante = restanteSegundos();
   if (restante <= 0) { render(); return; } // el bloque terminó: aquí sí hace falta reconstruir (confeti, crédito)
   const digits = document.getElementById("digits");
-  const anillo = document.getElementById("anillo");
   if (digits) digits.textContent = fmt(restante);
-  if (anillo) {
-    const total = t.duracionMs / 1000;
-    const pct = Math.round(((total - restante) / total) * 100);
-    anillo.style.background = `conic-gradient(#fff calc(${pct}*1%),rgba(255,255,255,.22) 0)`;
-  }
+  const total = t.duracionMs / 1000;
+  const pct = Math.round(((total - restante) / total) * 100);
+  const anillo = document.getElementById("anillo");
+  if (anillo) anillo.style.background = `conic-gradient(#fff calc(${pct}*1%),rgba(255,255,255,.22) 0)`;
+  const barra = document.getElementById("barra-minimal");
+  if (barra) barra.style.width = pct + "%";
 }
 
 /* ========= arranque ========= */
