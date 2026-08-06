@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Cuckoo ENARM</title>
+<link rel="icon" type="image/png" href="icono-cuckoo-enarm.png">
+<link rel="apple-touch-icon" href="icono-cuckoo-enarm.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
@@ -72,6 +74,8 @@ const st = {
 let backend = null;
 let toastTimer = null;
 let renderInterval = null;
+let latidoInterval = null;
+let presenciaInterval = null;
 let breatheTimer = null;
 let creditedFor = null;
 
@@ -133,7 +137,7 @@ async function crearBackend() {
       unsubs.forEach(u => u && u()); unsubs = [];
       const r = refs(s);
       dbMod.onDisconnect(r.yo).remove();
-      dbMod.set(r.yo, { nombre: st.name, cara: st.face });
+      dbMod.set(r.yo, { nombre: st.name, cara: st.face, visto: Date.now() });
       unsubs.push(dbMod.onValue(r.gente, (snap) => { st.gente = snap.val() || {}; render(); }));
       unsubs.push(dbMod.onValue(r.timer, (snap) => {
         const nuevo = snap.val();
@@ -142,6 +146,7 @@ async function crearBackend() {
       }));
       unsubs.push(dbMod.onValue(r.historial, (snap) => { st.historial = snap.val() || {}; render(); }));
     },
+    latido(s) { if (!document.hidden) dbMod.update(refs(s).yo, { visto: Date.now() }); },
     salir(s) { dbMod.remove(refs(s).yo).catch(() => {}); unsubs.forEach(u => u && u()); unsubs = []; st.gente = {}; st.timerFB = null; },
     iniciar(s, modo, minutos) { dbMod.set(refs(s).timer, { modo, duracionMs: minutos * 60000, iniciadoEn: Date.now(), pausado: false, restanteAlPausar: null }); },
     pausar(s) { const t = st.timerFB; if (!t) return; const restante = t.duracionMs - (Date.now() - t.iniciadoEn); dbMod.update(refs(s).timer, { pausado: true, restanteAlPausar: restante }); },
@@ -380,8 +385,11 @@ function renderRoom() {
   const noticeText = terminado ? `¡Tu sesión de ${modo === "work" ? "enfoque" : "descanso"} terminó!` : "Te uniste a esta Cuckoo justo ahora";
   const breatheCaption = ({ 3: "Prepárate", 2: "Respira", 1: "Silencio" })[st.breatheCount] || "Silencio";
 
-  // gente REAL de Firebase — sin perfiles inventados
-  const allMembers = Object.values(st.gente);
+  // gente REAL de Firebase, filtrada a quien mandó señal de vida hace poco
+  const PRESENCIA_MS = 45000;
+  const ahora = Date.now();
+  const conectadosEntries = Object.entries(st.gente).filter(([, p]) => ahora - (p.visto || 0) < PRESENCIA_MS);
+  const allMembers = conectadosEntries.map(([, p]) => p);
   const hoy = hoyISO();
   const planos = [];
   for (const [pid, entradas] of Object.entries(st.historial)) for (const e of Object.values(entradas || {})) planos.push({ pid, ...e });
@@ -389,7 +397,7 @@ function renderRoom() {
   const blocksToday = trabajoHoy.length;
   const minutesToday = trabajoHoy.reduce((s, h) => s + h.minutos, 0);
   const streak = computeStreak();
-  const memberStats = Object.entries(st.gente).map(([pid, p]) => ({
+  const memberStats = conectadosEntries.map(([pid, p]) => ({
     face: p.cara, name: p.nombre,
     label: planos.filter(h => h.pid === pid && h.fecha === hoy).reduce((s, h) => s + h.minutos, 0) + " min",
   }));
@@ -403,6 +411,7 @@ function renderRoom() {
 <div style="position:relative;z-index:2">
 <div style="position:fixed;top:26px;left:34px;display:flex;align-items:center;gap:8px;font-family:'Manrope',sans-serif;font-weight:800;font-size:1.15rem;letter-spacing:.04em;z-index:5">
 <span style="display:flex;align-items:center">CUCKO<span style="display:inline-block;width:10px;height:10px;border:3px solid currentColor;border-radius:50%;margin-left:2px"></span></span>
+<span style="font-size:.6rem;font-weight:700;letter-spacing:.14em;background:rgba(0,0,0,.18);padding:4px 8px;border-radius:20px;text-transform:uppercase">${esc(st.slug)}</span>
 </div>
 <div style="position:fixed;top:24px;right:30px;display:flex;gap:14px;z-index:5;background:rgba(0,0,0,.14);padding:10px 14px;border-radius:30px;backdrop-filter:blur(6px)">
 <button id="btn-modo" title="Cambiar modo" style="border:0;background:transparent;color:rgba(255,255,255,.75);font-size:1.3rem;cursor:pointer;width:32px;height:32px;transition:.2s">⌛</button>
@@ -594,6 +603,18 @@ function tick() {
 render();
 clearInterval(renderInterval);
 renderInterval = setInterval(tick, 250);
+
+// señal de vida cada 20s (solo si la ventana está a la vista) — así, quien deja
+// la app abierta en segundo plano sin verla deja de contar como "conectado"
+clearInterval(latidoInterval);
+latidoInterval = setInterval(() => { if (backend && st.screen === "room") backend.latido(st.slug); }, 20000);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && backend && st.screen === "room") backend.latido(st.slug);
+});
+
+// refresco lento para que los perfiles vencidos desaparezcan aunque nadie más cambie nada
+clearInterval(presenciaInterval);
+presenciaInterval = setInterval(() => { if (st.screen === "room") render(); }, 15000);
 </script>
 </body>
 </html>
