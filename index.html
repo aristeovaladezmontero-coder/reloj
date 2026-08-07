@@ -139,6 +139,8 @@ const guardarSalaReciente = (s) => { const l = [s, ...leerSalasRecientes().filte
 
 /* ========= estado ========= */
 const myId = idNuevo();
+// Identidad estable por dispositivo: permite saber si un perfil es NUEVO en la sala
+const uid = localStorage.getItem("cuckoo-uid") || (() => { const u = idNuevo(); localStorage.setItem("cuckoo-uid", u); return u; })();
 const FACES = ["🧑\u200d⚕️", "👩\u200d⚕️", "🧑\u200d💻", "🧠", "📚"];
 
 // tweaks: reshapean el ánimo visual completo de la app
@@ -168,6 +170,8 @@ const st = {
   metaDiaria: Math.max(10, Number(localStorage.getItem("cuckoo-meta-diaria")) || 120),
   ambiente: null,
   clockOffset: 0,
+  autoEn: null,
+  configFB: null,
   breatheCount: null,
   customOpen: false,
   customValue: 50,
@@ -192,6 +196,8 @@ let latidoInterval = null;
 let presenciaInterval = null;
 let breatheTimer = null;
 let creditedFor = null;
+let autoTimer = null;   // cuenta regresiva del arranque automático del siguiente bloque
+let finRendered = null; // para reconstruir la pantalla UNA sola vez por bloque terminado
 
 /* ========= sonido / notificaciones ========= */
 function alarmSound() {
@@ -292,6 +298,8 @@ async function crearBackend() {
       miHistorial: dbMod.ref(db, `salas/${s}/historial/${myId}`),
       metas: dbMod.ref(db, `salas/${s}/metas`),
       ultimaSalida: dbMod.ref(db, `salas/${s}/ultimaSalida`),
+      config: dbMod.ref(db, `salas/${s}/config`),
+      perfiles: dbMod.ref(db, `salas/${s}/perfiles`),
     };
   }
 
@@ -312,21 +320,42 @@ async function crearBackend() {
       dbMod.onDisconnect(r.yo).remove();
       dbMod.onDisconnect(r.ultimaSalida).set(dbMod.serverTimestamp());
       dbMod.set(r.yo, { nombre: st.name, cara: st.face, visto: Date.now() });
+      // Aviso discreto SOLO cuando alguien se une a la sala por primera vez
+      // (no en cada entrada/salida, para no interrumpir el estudio)
+      const miPerfil = dbMod.ref(db, `salas/${s}/perfiles/${uid}`);
+      dbMod.get(miPerfil).then((snap) => {
+        if (!snap.exists()) dbMod.set(miPerfil, { nombre: st.name, cara: st.face, creadoEn: dbMod.serverTimestamp() });
+        else dbMod.update(miPerfil, { nombre: st.name, cara: st.face });
+      }).catch(() => {});
+      unsubs.push(dbMod.onChildAdded(r.perfiles, (snap) => {
+        const p = snap.val() || {};
+        if (snap.key !== uid && p.creadoEn && ahora() - p.creadoEn < 30000) showToast(`${p.cara || "🙂"} ¡${p.nombre} se unió a la Cuckoo!`);
+      }));
       unsubs.push(dbMod.onValue(r.gente, (snap) => { st.gente = snap.val() || {}; render(); }));
       unsubs.push(dbMod.onValue(r.timer, (snap) => {
         const nuevo = snap.val();
-        if (!nuevo || !st.timerFB || nuevo.iniciadoEn !== st.timerFB.iniciadoEn) creditedFor = null;
+        if (!nuevo || !st.timerFB || nuevo.iniciadoEn !== st.timerFB.iniciadoEn) { creditedFor = null; clearInterval(autoTimer); st.autoEn = null; }
         st.timerFB = nuevo; render();
       }));
       unsubs.push(dbMod.onValue(r.historial, (snap) => { st.historial = snap.val() || {}; render(); }));
       unsubs.push(dbMod.onValue(r.metas, (snap) => { st.metas = snap.val() || {}; render(); }));
+      unsubs.push(dbMod.onValue(r.config, (snap) => { st.configFB = snap.val(); render(); }));
     },
     latido(s) { if (!document.hidden) dbMod.update(refs(s).yo, { visto: Date.now() }); },
-    salir(s) { dbMod.set(refs(s).ultimaSalida, Date.now()).catch(() => {}); dbMod.remove(refs(s).yo).catch(() => {}); unsubs.forEach(u => u && u()); unsubs = []; st.gente = {}; st.timerFB = null; st.metas = {}; },
+    salir(s) { dbMod.set(refs(s).ultimaSalida, Date.now()).catch(() => {}); dbMod.remove(refs(s).yo).catch(() => {}); unsubs.forEach(u => u && u()); unsubs = []; st.gente = {}; st.timerFB = null; st.metas = {}; st.configFB = null; },
     iniciar(s, modo, minutos) { dbMod.set(refs(s).timer, { modo, duracionMs: minutos * 60000, iniciadoEn: ahora(), pausado: false, restanteAlPausar: null }); },
     pausar(s) { const t = st.timerFB; if (!t) return; const restante = t.duracionMs - (ahora() - t.iniciadoEn); dbMod.update(refs(s).timer, { pausado: true, restanteAlPausar: restante }); },
     reanudar(s) { const t = st.timerFB; if (!t) return; dbMod.update(refs(s).timer, { pausado: false, iniciadoEn: ahora() - (t.duracionMs - t.restanteAlPausar) }); },
     detener(s) { dbMod.set(refs(s).timer, null); },
+    guardarConfig(s, cambios) { dbMod.update(refs(s).config, cambios).catch(() => {}); },
+    // Arranca el siguiente bloque de forma atómica (transacción): si alguien más
+    // ya lo arrancó, la operación se cancela sola. Adiós a los choques entre 4 clics.
+    avanzar(s, viejoIniciadoEn, modo, minutos) {
+      return dbMod.runTransaction(refs(s).timer, (t) => {
+        if (!t || t.pausado || t.iniciadoEn !== viejoIniciadoEn) return; // alguien ya avanzó
+        return { modo, duracionMs: minutos * 60000, iniciadoEn: ahora(), pausado: false, restanteAlPausar: null };
+      }).catch(() => {});
+    },
     acreditar(s, minutos, modo) { dbMod.push(refs(s).miHistorial, { fecha: hoyISO(), minutos, modo }); },
     agregarMeta(s, texto) { dbMod.push(refs(s).metas, { texto, hecho: false, autor: st.name, cara: st.face, ts: Date.now() }); },
     toggleMeta(s, id, hecho) { dbMod.update(dbMod.ref(db, `salas/${s}/metas/${id}`), { hecho: !hecho }); },
@@ -345,6 +374,10 @@ function restanteSegundos() {
   return ms / 1000;
 }
 function modoEfectivo() { return st.timerFB ? st.timerFB.modo : st.mode; }
+// Duraciones compartidas de la sala (Firebase). Si la sala aún no define nada,
+// se usa la preferencia local de cada quien.
+function focusMinEfectivo() { return (st.configFB && st.configFB.focusMin) || st.focusMin; }
+function breakMinEfectivo() { return (st.configFB && st.configFB.breakMin) || st.breakMin; }
 
 function revisarFin() {
   const t = st.timerFB;
@@ -357,6 +390,26 @@ function revisarFin() {
   if (backend) backend.acreditar(st.slug, minutos, t.modo);
   alarmSound();
   notify(t.modo === "work" ? "Tu sesión de enfoque terminó 🎉" : "Tu descanso terminó, ¡de vuelta al estudio!");
+  // Encadenado automático: enfoque → descanso → enfoque, en loop.
+  // (Solo si el bloque acaba de terminar; si es un timer viejo abandonado, no arranca nada.)
+  if (restante > -60) {
+    const viejo = t.iniciadoEn;
+    const proximoModo = t.modo === "work" ? "break" : "work";
+    const proximosMin = proximoModo === "work" ? focusMinEfectivo() : breakMinEfectivo();
+    st.autoEn = 6;
+    clearInterval(autoTimer);
+    autoTimer = setInterval(() => {
+      const tt = st.timerFB;
+      if (!tt || tt.iniciadoEn !== viejo) { clearInterval(autoTimer); st.autoEn = null; return; }
+      st.autoEn -= 1;
+      const el = document.getElementById("auto-count");
+      if (el) el.textContent = st.autoEn;
+      if (st.autoEn <= 0) {
+        clearInterval(autoTimer); st.autoEn = null;
+        if (backend) backend.avanzar(st.slug, viejo, proximoModo, proximosMin);
+      }
+    }, 1000);
+  }
 }
 
 /* ========= navegación / acciones ========= */
@@ -383,7 +436,9 @@ async function enterRoom() {
 }
 function goLandingScreen() {
   clearInterval(breatheTimer);
+  clearInterval(autoTimer); st.autoEn = null;
   pararAmbiente(); st.ambiente = null;
+  window.__cuckooConectados = 0;
   if (backend) backend.salir(st.slug);
   st.screen = "landing"; render();
 }
@@ -397,8 +452,8 @@ function setPaleta(p) { st.tweakPaleta = p; localStorage.setItem("cuckoo-paleta"
 function setEnergia(e) { st.tweakEnergia = e; localStorage.setItem("cuckoo-energia", e); render(); }
 function setTimerStyle(s) { st.tweakTimerStyle = s; localStorage.setItem("cuckoo-estilotimer", s); render(); }
 function toggleSound() { st.soundOn = !st.soundOn; localStorage.setItem("cuckoo-sound", st.soundOn ? "1" : "0"); render(); }
-function setFocusMin(v) { st.focusMin = Math.max(1, Math.min(240, Number(v) || 50)); localStorage.setItem("cuckoo-focusMin", st.focusMin); render(); }
-function setBreakMin(v) { st.breakMin = Math.max(1, Math.min(60, Number(v) || 10)); localStorage.setItem("cuckoo-breakMin", st.breakMin); render(); }
+function setFocusMin(v) { st.focusMin = Math.max(1, Math.min(240, Number(v) || 50)); localStorage.setItem("cuckoo-focusMin", st.focusMin); if (backend && st.screen === "room") backend.guardarConfig(st.slug, { focusMin: st.focusMin }); render(); }
+function setBreakMin(v) { st.breakMin = Math.max(1, Math.min(60, Number(v) || 10)); localStorage.setItem("cuckoo-breakMin", st.breakMin); if (backend && st.screen === "room") backend.guardarConfig(st.slug, { breakMin: st.breakMin }); render(); }
 
 function startBreathe(min) {
   const modoInicio = st.mode;
@@ -435,12 +490,15 @@ function skipBreak() { st.mode = "work"; render(); }
 function toggle() {
   if (!backend) { mostrarAviso("No hay conexión con la sala todavía."); return; }
   if (restanteSegundos() !== null && restanteSegundos() <= 0) {
-    st.mode = modoEfectivo() === "work" ? "break" : "work";
-    backend.detener(st.slug);
+    const t = st.timerFB;
+    clearInterval(autoTimer); st.autoEn = null;
+    const proximoModo = t.modo === "work" ? "break" : "work";
+    st.mode = proximoModo;
+    backend.avanzar(st.slug, t.iniciadoEn, proximoModo, proximoModo === "work" ? focusMinEfectivo() : breakMinEfectivo());
     return;
   }
   if (!st.timerFB && st.breatheCount === null) {
-    const min = st.mode === "work" ? st.focusMin : st.breakMin;
+    const min = st.mode === "work" ? focusMinEfectivo() : breakMinEfectivo();
     startBreathe(min);
     return;
   }
@@ -450,6 +508,7 @@ function toggle() {
 }
 function resetTimer() {
   clearInterval(breatheTimer); st.breatheCount = null;
+  clearInterval(autoTimer); st.autoEn = null;
   if (backend) backend.detener(st.slug);
   render();
 }
@@ -623,6 +682,7 @@ function renderRoom() {
   const ahora = Date.now();
   const conectadosEntries = Object.entries(st.gente).filter(([, p]) => ahora - (p.visto || 0) < PRESENCIA_MS);
   const allMembers = conectadosEntries.map(([, p]) => p);
+  window.__cuckooConectados = allMembers.length; // contador junto al icono en la barra (app)
   const hoy = hoyISO();
   const planos = [];
   for (const [pid, entradas] of Object.entries(st.historial)) for (const e of Object.values(entradas || {})) planos.push({ pid, ...e });
@@ -745,7 +805,7 @@ ${allMembers.map(m => `<span title="${esc(m.nombre)}" style="position:relative;w
 <div style="color:rgba(255,255,255,.75);font-size:.95rem">${allMembers.length} integrante(s) · ${hayTimer ? (running ? (modo === "work" ? "📚 enfocados ahora" : "☕ descansando") : "⏸ en pausa") : "🕊 sin bloque activo"}</div>
 <div style="display:flex;gap:8px;align-items:center;font-size:.72rem;color:rgba(255,255,255,.72)">
 <span style="width:26px;height:26px;border-radius:50%;background:#fff;color:#5061d8;display:grid;place-items:center;flex-shrink:0">🌎</span>
-<span>${esc(noticeText)}</span>
+<span>${esc(noticeText)}${terminado && st.autoEn !== null ? ` ${modo === "work" ? "El descanso comienza en" : "El estudio comienza en"} <b id="auto-count">${st.autoEn}</b> s…` : ""}</span>
 </div>
 </div>
 </div>
@@ -817,11 +877,11 @@ ${st.detailsOpen ? `
 <div style="width:min(480px,100%);margin:0 auto">
 <button id="btn-cerrar-ajustes" style="float:right;border:0;background:transparent;color:#fff;font-size:1.6rem;cursor:pointer">×</button>
 <h2 style="margin:6px 0 24px;clear:both;font-family:'Manrope',sans-serif;font-size:1.3rem">Ajustes</h2>
-<label style="display:block;font-size:.7rem;margin-top:8px">Estudio predeterminado (min)
-<input id="in-focus" type="number" min="1" max="240" value="${st.focusMin}" style="width:100%;padding:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);color:#fff;margin-top:5px;border-radius:8px;font-family:inherit">
+<label style="display:block;font-size:.7rem;margin-top:8px">Estudio de la sala (min) — se sincroniza para todos
+<input id="in-focus" type="number" min="1" max="240" value="${focusMinEfectivo()}" style="width:100%;padding:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);color:#fff;margin-top:5px;border-radius:8px;font-family:inherit">
 </label>
-<label style="display:block;font-size:.7rem;margin-top:14px">Descanso predeterminado (min)
-<input id="in-break" type="number" min="1" max="60" value="${st.breakMin}" style="width:100%;padding:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);color:#fff;margin-top:5px;border-radius:8px;font-family:inherit">
+<label style="display:block;font-size:.7rem;margin-top:14px">Descanso de la sala (min) — se sincroniza para todos
+<input id="in-break" type="number" min="1" max="60" value="${breakMinEfectivo()}" style="width:100%;padding:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);color:#fff;margin-top:5px;border-radius:8px;font-family:inherit">
 </label>
 <button id="btn-sonido" style="width:100%;margin-top:10px;border:1px solid rgba(255,255,255,.34);background:transparent;color:#fff;padding:13px;border-radius:8px;font-weight:700;cursor:pointer">${st.soundOn ? "🔔 Sonido y notificaciones activadas" : "🔕 Sonido y notificaciones desactivadas"}</button>
 <label style="display:block;font-size:.7rem;margin-top:22px">Mi meta diaria de estudio (min)
@@ -896,7 +956,12 @@ function tick() {
   const t = st.timerFB;
   if (!t || t.pausado) return;
   const restante = restanteSegundos();
-  if (restante <= 0) { render(); return; } // el bloque terminó: aquí sí hace falta reconstruir (confeti, crédito)
+  if (restante <= 0) {
+    // reconstruir UNA sola vez por bloque terminado; el redibujado constante
+    // hacía parpadear el confeti y "se comía" los clics de los botones
+    if (finRendered !== t.iniciadoEn) { finRendered = t.iniciadoEn; render(); }
+    return;
+  }
   const digits = document.getElementById("digits");
   if (digits) { const txt = fmt(restante); if (digits.textContent !== txt) digits.textContent = txt; }
   const total = t.duracionMs / 1000;
