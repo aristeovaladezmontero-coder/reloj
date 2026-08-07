@@ -36,6 +36,32 @@ input{font-family:inherit}
 .btn-cta-primary{transition:transform .2s,box-shadow .2s}
 .btn-cta-primary:hover{transform:translateY(-3px) scale(1.03);box-shadow:0 10px 26px rgba(0,0,0,.3)}
 .btn-cta-primary:active{transform:scale(.97)}
+/* ===== Glass estilo macOS ===== */
+body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+::selection{background:rgba(255,255,255,.3)}
+/* luces de profundidad sobre el degradado: le dan textura al vidrio */
+#root > div[style*="135deg"]{position:relative;isolation:isolate}
+#root > div[style*="135deg"]::before{content:"";position:absolute;inset:0;pointer-events:none;background:
+ radial-gradient(420px 320px at 12% 8%, rgba(255,255,255,.16), transparent 60%),
+ radial-gradient(560px 440px at 88% 28%, rgba(255,255,255,.10), transparent 65%),
+ radial-gradient(640px 500px at 50% 108%, rgba(0,0,0,.20), transparent 70%)}
+/* paneles esmerilados: blur real + filo brillante arriba + contorno fino */
+[style*="background:rgba(255,255,255,.08)"],[style*="background:rgba(255,255,255,.1)"],[style*="background:rgba(255,255,255,.12)"]{
+ -webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 0 0 1px rgba(255,255,255,.10)!important}
+/* micro-interacciones */
+button{transition:transform .18s ease,box-shadow .25s ease,background .25s ease,filter .25s ease}
+button:hover{filter:brightness(1.09)}
+button:active{transform:scale(.965)}
+input{transition:box-shadow .2s ease,background .2s ease}
+input:focus{outline:none;box-shadow:0 0 0 3px rgba(255,255,255,.25)!important;background:rgba(255,255,255,.18)!important}
+/* reloj con brillo suave */
+#digits{text-shadow:0 0 26px rgba(255,255,255,.35)}
+#anillo{box-shadow:0 0 44px rgba(255,255,255,.14),inset 0 0 26px rgba(0,0,0,.10)}
+/* scroll discreto */
+::-webkit-scrollbar{width:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:8px;border:3px solid transparent;background-clip:padding-box}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -141,6 +167,7 @@ const st = {
   flashMin: null,
   metaDiaria: Math.max(10, Number(localStorage.getItem("cuckoo-meta-diaria")) || 120),
   ambiente: null,
+  clockOffset: 0,
   breatheCount: null,
   customOpen: false,
   customValue: 50,
@@ -253,6 +280,7 @@ async function crearBackend() {
   const dbMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js");
   const app = appMod.initializeApp(FIREBASE);
   const db = dbMod.getDatabase(app);
+  dbMod.onValue(dbMod.ref(db, ".info/serverTimeOffset"), (snap) => { st.clockOffset = snap.val() || 0; });
   let unsubs = [];
 
   function refs(s) {
@@ -295,9 +323,9 @@ async function crearBackend() {
     },
     latido(s) { if (!document.hidden) dbMod.update(refs(s).yo, { visto: Date.now() }); },
     salir(s) { dbMod.set(refs(s).ultimaSalida, Date.now()).catch(() => {}); dbMod.remove(refs(s).yo).catch(() => {}); unsubs.forEach(u => u && u()); unsubs = []; st.gente = {}; st.timerFB = null; st.metas = {}; },
-    iniciar(s, modo, minutos) { dbMod.set(refs(s).timer, { modo, duracionMs: minutos * 60000, iniciadoEn: Date.now(), pausado: false, restanteAlPausar: null }); },
-    pausar(s) { const t = st.timerFB; if (!t) return; const restante = t.duracionMs - (Date.now() - t.iniciadoEn); dbMod.update(refs(s).timer, { pausado: true, restanteAlPausar: restante }); },
-    reanudar(s) { const t = st.timerFB; if (!t) return; dbMod.update(refs(s).timer, { pausado: false, iniciadoEn: Date.now() - (t.duracionMs - t.restanteAlPausar) }); },
+    iniciar(s, modo, minutos) { dbMod.set(refs(s).timer, { modo, duracionMs: minutos * 60000, iniciadoEn: ahora(), pausado: false, restanteAlPausar: null }); },
+    pausar(s) { const t = st.timerFB; if (!t) return; const restante = t.duracionMs - (ahora() - t.iniciadoEn); dbMod.update(refs(s).timer, { pausado: true, restanteAlPausar: restante }); },
+    reanudar(s) { const t = st.timerFB; if (!t) return; dbMod.update(refs(s).timer, { pausado: false, iniciadoEn: ahora() - (t.duracionMs - t.restanteAlPausar) }); },
     detener(s) { dbMod.set(refs(s).timer, null); },
     acreditar(s, minutos, modo) { dbMod.push(refs(s).miHistorial, { fecha: hoyISO(), minutos, modo }); },
     agregarMeta(s, texto) { dbMod.push(refs(s).metas, { texto, hecho: false, autor: st.name, cara: st.face, ts: Date.now() }); },
@@ -307,10 +335,13 @@ async function crearBackend() {
 }
 
 /* ========= cálculo del bloque compartido ========= */
+// Hora corregida: Date.now() de cada Mac puede estar desfasado varios segundos;
+// sumando el offset del servidor de Firebase, los 4 relojes marcan lo mismo.
+function ahora() { return Date.now() + (st.clockOffset || 0); }
 function restanteSegundos() {
   const t = st.timerFB;
   if (!t) return null;
-  const ms = t.pausado ? t.restanteAlPausar : t.duracionMs - (Date.now() - t.iniciadoEn);
+  const ms = t.pausado ? t.restanteAlPausar : t.duracionMs - (ahora() - t.iniciadoEn);
   return ms / 1000;
 }
 function modoEfectivo() { return st.timerFB ? st.timerFB.modo : st.mode; }
@@ -867,7 +898,7 @@ function tick() {
   const restante = restanteSegundos();
   if (restante <= 0) { render(); return; } // el bloque terminó: aquí sí hace falta reconstruir (confeti, crédito)
   const digits = document.getElementById("digits");
-  if (digits) digits.textContent = fmt(restante);
+  if (digits) { const txt = fmt(restante); if (digits.textContent !== txt) digits.textContent = txt; }
   const total = t.duracionMs / 1000;
   const pct = Math.round(((total - restante) / total) * 100);
   const anillo = document.getElementById("anillo");
@@ -886,6 +917,7 @@ if (st.screen === "room" && st.name) {
 }
 clearInterval(renderInterval);
 renderInterval = setInterval(tick, 250);
+(function tickFrame() { tick(); requestAnimationFrame(tickFrame); })();
 
 // señal de vida cada 20s (solo si la ventana está a la vista) — así, quien deja
 // la app abierta en segundo plano sin verla deja de contar como "conectado"
