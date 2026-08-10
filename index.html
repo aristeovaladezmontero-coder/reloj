@@ -206,6 +206,7 @@ function alarmSound() {
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
     const a = new AC();
+    if (a.state === "suspended") a.resume().catch(() => {});
     let t = a.currentTime + 0.05;
     for (let i = 0; i < 3; i++) {
       [[784, 0.24], [622, 0.34]].forEach(([f, d], j) => {
@@ -335,6 +336,12 @@ async function crearBackend() {
       unsubs.push(dbMod.onValue(r.timer, (snap) => {
         const nuevo = snap.val();
         if (!nuevo || !st.timerFB || nuevo.iniciadoEn !== st.timerFB.iniciadoEn) { creditedFor = null; clearInterval(autoTimer); st.autoEn = null; }
+        // Le avisa a la app la hora exacta del fin del bloque, para que el
+        // cucú suene de forma nativa aunque la tarjeta esté oculta
+        if (window.__TAURI__ && window.__TAURI__.event) {
+          const fin = nuevo && !nuevo.pausado ? (nuevo.iniciadoEn + nuevo.duracionMs - (st.clockOffset || 0)) : 0;
+          window.__TAURI__.event.emit("cuckoo-fin", String(fin)).catch(() => {});
+        }
         st.timerFB = nuevo; render();
       }));
       unsubs.push(dbMod.onValue(r.historial, (snap) => { st.historial = snap.val() || {}; render(); }));
@@ -388,7 +395,7 @@ function revisarFin() {
   creditedFor = t.iniciadoEn;
   const minutos = Math.round(t.duracionMs / 60000);
   if (backend) backend.acreditar(st.slug, minutos, t.modo);
-  alarmSound();
+  if (!window.__TAURI__) alarmSound(); // en la app el cucú suena nativo, aunque esté oculta
   notify(t.modo === "work" ? "Tu sesión de enfoque terminó 🎉" : "Tu descanso terminó, ¡de vuelta al estudio!");
   // Encadenado automático: enfoque → descanso → enfoque, en loop.
   // (Solo si el bloque acaba de terminar; si es un timer viejo abandonado, no arranca nada.)
