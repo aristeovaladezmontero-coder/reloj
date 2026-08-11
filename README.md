@@ -1,7 +1,7 @@
-[README.md](https://github.com/user-attachments/files/30939319/README.md)
+[README.md](https://github.com/user-attachments/files/30940428/README.md)
 <div align="center">
 
-<img src="icono-cuckoo-enarm.png" width="96" alt="Tequio ENARM">
+<img src="icono-rio.png" width="120" alt="Río, la mascota de la app">
 
 # Tequio ENARM
 
