@@ -78,6 +78,18 @@ input:focus{outline:none;box-shadow:0 0 0 3px rgba(255,255,255,.25)!important;ba
 <div id="root"></div>
 <script type="module">
 
+/* ☕ Donaciones — crea tu cuenta gratis en buymeacoffee.com y pon aquí tu link */
+const DONA_URL = "https://buymeacoffee.com/aristeovaladez";
+window.abrirDona = (ev) => {
+  if (ev) ev.preventDefault();
+  const t = window.__TAURI__;
+  if (t && t.opener && t.opener.openUrl) t.opener.openUrl(DONA_URL).catch(() => {});
+  else if (t && t.shell && t.shell.open) t.shell.open(DONA_URL).catch(() => {});
+  else if (t) { try { navigator.clipboard.writeText(DONA_URL).then(() => showToast("☕ Link copiado — pégalo en tu navegador")).catch(() => {}); } catch (e) {} }
+  else window.open(DONA_URL, "_blank", "noopener");
+  return false;
+};
+
 /* ========= CONFIGURACIÓN FIREBASE (reloj-enarm) ========= */
 const FIREBASE = {
   apiKey: "AIzaSyCurBiYUGckz1cpRmpTLWu_ketz12oIOoQ",
@@ -626,6 +638,10 @@ ${rs.map(s => `<button data-sala="${esc(s)}" class="btn-sala-reciente" style="bo
 <div id="caras-landing" style="display:flex;gap:8px;margin:12px 0 18px;flex-wrap:wrap"></div>
 <button id="btn-entrar-landing" style="width:100%;border:0;background:linear-gradient(92deg,#fff,#ffe9c4);color:#4a3fb5;padding:15px 22px;border-radius:14px;font-weight:800;cursor:pointer;font-family:inherit;font-size:1.05rem;letter-spacing:.02em;transition:.2s;box-shadow:0 14px 30px rgba(10,14,50,.3)">Entrar a la sala <span style="display:inline-block;animation:nudgeRight ${e.bounce}s ease-in-out infinite">⟶</span></button>
 <div style="font-size:.68rem;color:rgba(255,255,255,.6);margin-top:10px;text-align:center">Comparte este link con quien quieras: escriben su sala, su nombre ¡y adentro!</div>
+<div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.18);text-align:center">
+<a href="${DONA_URL}" onclick="return abrirDona(event)" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:#ffdd00;color:#1a1a2e;font-weight:800;font-size:.86rem;padding:10px 18px;border-radius:14px;text-decoration:none;box-shadow:0 10px 26px rgba(0,0,0,.22)">☕ Invítame un café</a>
+<div style="font-size:.68rem;color:rgba(255,255,255,.75);margin-top:7px">Si Río te ayuda a estudiar, puedes apoyar el proyecto 💛</div>
+</div>
 </div>
 </div>
 </div>
