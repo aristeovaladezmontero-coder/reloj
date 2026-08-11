@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="icono-cuckoo-enarm.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&family=Sora:wght@700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%}
@@ -148,6 +148,7 @@ const PALETTES = {
   violeta: { label: "Violeta", bg: "linear-gradient(135deg,#5366da,#7060ed)", breakBg: "linear-gradient(135deg,#02bde8,#08aee7)", doneBg: "linear-gradient(135deg,#ff2b96,#ff2586)", ringBase: "#6460ec", ringBreak: "#06b8ed", ringDone: "#ff278f" },
   bosque: { label: "Bosque", bg: "linear-gradient(135deg,#1f8a5f,#2fae7a)", breakBg: "linear-gradient(135deg,#12b3a8,#0e8f8a)", doneBg: "linear-gradient(135deg,#e8a23c,#d97b2b)", ringBase: "#279368", ringBreak: "#0f9c92", ringDone: "#dd8a30" },
   medianoche: { label: "Medianoche", bg: "linear-gradient(135deg,#242b52,#3a3d7a)", breakBg: "linear-gradient(135deg,#1f6f8b,#164f66)", doneBg: "linear-gradient(135deg,#b23a6b,#8c2c56)", ringBase: "#31386b", ringBreak: "#1c6883", ringDone: "#a53865" },
+  atardecer: { label: "Atardecer", bg: "linear-gradient(135deg,#ff5e7e,#ff9a5c)", breakBg: "linear-gradient(135deg,#00c2b8,#0aa2c0)", doneBg: "linear-gradient(135deg,#7c5cff,#5f45e6)", ringBase: "#ff7a6b", ringBreak: "#05b1bb", ringDone: "#6d52f2" },
 };
 const ENERGY = {
   calma: { grad: 24, float: 10, pulse: 9, bounce: 2.6, breathe: 1.6 },
@@ -576,6 +577,7 @@ function renderLanding() {
     violeta: { main: ["linear-gradient(145deg,#08c7ed 55%,#ff3e91 55%)", "linear-gradient(145deg,#21c980,#139eca)", "linear-gradient(145deg,#03d0ea,#4d64d5)", "linear-gradient(145deg,#ffb731,#ef5f3f)", "linear-gradient(145deg,#3c246f,#7159df)", "linear-gradient(145deg,#ff6fb5,#ff3e91)", "linear-gradient(145deg,#ffd76a,#ffb731)", "linear-gradient(145deg,#7de0ff,#08c7ed)"], glow: ["rgba(8,199,237,.5)", "rgba(255,62,145,.42)"] },
     bosque: { main: ["linear-gradient(145deg,#2fe0a0 55%,#0e8f8a 55%)", "linear-gradient(145deg,#8bd450,#2fae7a)", "linear-gradient(145deg,#12b3a8,#1f6f5a)", "linear-gradient(145deg,#e8a23c,#d97b2b)", "linear-gradient(145deg,#1f4d3a,#2f8a5f)", "linear-gradient(145deg,#f2c94c,#e8a23c)", "linear-gradient(145deg,#7be0c4,#12b3a8)", "linear-gradient(145deg,#a3e635,#65a30d)"], glow: ["rgba(47,224,160,.45)", "rgba(232,162,60,.4)"] },
     medianoche: { main: ["linear-gradient(145deg,#5b6ee8 55%,#a53865 55%)", "linear-gradient(145deg,#8b7cf0,#3a3d7a)", "linear-gradient(145deg,#1c6883,#242b52)", "linear-gradient(145deg,#d9a441,#a53865)", "linear-gradient(145deg,#242b52,#5b6ee8)", "linear-gradient(145deg,#ff8fb0,#a53865)", "linear-gradient(145deg,#f4d06f,#d9a441)", "linear-gradient(145deg,#6fd6e8,#1c6883)"], glow: ["rgba(91,110,232,.45)", "rgba(165,56,101,.4)"] },
+    atardecer: { main: ["linear-gradient(145deg,#ffd166 55%,#ff5e7e 55%)", "linear-gradient(145deg,#ffb35c,#ff6f61)", "linear-gradient(145deg,#ff8fa3,#ff5e7e)", "linear-gradient(145deg,#ffd166,#ff9a5c)", "linear-gradient(145deg,#7c2d5d,#c94277)", "linear-gradient(145deg,#7c5cff,#5f45e6)", "linear-gradient(145deg,#ffe29a,#ffd166)", "linear-gradient(145deg,#66e0d5,#00c2b8)"], glow: ["rgba(255,94,126,.45)", "rgba(255,209,102,.4)"] },
   };
   const colors = BUBBLE_COLORS[st.tweakPaleta] || BUBBLE_COLORS.violeta;
   const bubbleDefs = BUBBLE_POS.map((p, i) => ({ ...p, bg: colors.main[i] }));
@@ -594,11 +596,13 @@ ${glowDefs.map((g, i) => `<div style="position:absolute;left:${g.left}px;top:${g
 ${bubbleDefs.map((b, i) => `<div style="position:absolute;left:${b.left}px;top:${b.top}px;width:${b.size}px;height:${b.size}px;border-radius:50%;background:${b.bg};display:grid;place-items:center;box-shadow:0 28px 60px rgba(21,25,73,.28);border:1px solid rgba(255,255,255,.2);animation:floatYNormal ${e.float+i*0.6}s ease-in-out infinite;animation-delay:${i*0.3}s"><b style="font-size:${b.size>140?"3rem":"2.1rem"};filter:drop-shadow(0 8px 10px rgba(0,0,0,.15))">${b.emoji}</b></div>`).join("")}
 </div>
 <div>
-<h1 style="font-family:'Manrope',sans-serif;font-size:clamp(2.4rem,5vw,4.4rem);letter-spacing:-.03em;line-height:1;margin:0 0 14px;font-weight:800">Bienvenido a Cuckoo ENARM</h1>
-<p style="font-size:1.1rem;color:rgba(255,255,255,.72);margin:0 0 12px;max-width:46ch">Un temporizador de productividad para estudiar el ENARM con amigos.</p>
+<div style="display:inline-flex;align-items:center;gap:8px;font-size:.64rem;font-weight:800;letter-spacing:.28em;text-transform:uppercase;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);padding:7px 14px;border-radius:20px;margin-bottom:16px">✦ Por amigos, para amigos</div>
+<h1 style="font-family:'Sora','Manrope',sans-serif;font-size:clamp(2.6rem,5.4vw,4.6rem);letter-spacing:-.04em;line-height:1.04;margin:0 0 16px;font-weight:800;background:linear-gradient(92deg,#ffffff 15%,#ffe9b8 55%,#ffc2e2 90%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">Estudiamos juntos.<br>Rendimos más.</h1>
+<p style="font-size:1.06rem;color:rgba(255,255,255,.8);margin:0 0 14px;max-width:52ch;line-height:1.6">Una app hecha <b style="color:#fff">por un grupo de amigos, para amigos</b>, con un solo objetivo: cumplir nuestros tiempos de estudio de manera <b style="color:#fff">ordenada y sincronizada</b> — mismo reloj, mismos descansos, misma meta.</p>
 <div style="font-size:.78rem;color:rgba(255,255,255,.82);margin:0 0 6px">📅 ${fechaBonita()} &nbsp;·&nbsp; 🎯 ${textoEnarm()}</div>
 <div style="font-size:.72rem;font-style:italic;color:rgba(255,255,255,.6);margin:0 0 30px">“${fraseDelDia()}”</div>
-<div style="font-size:.66rem;font-weight:800;letter-spacing:.35em;text-transform:uppercase;margin-bottom:11px;color:rgba(255,255,255,.85)">Código de sala</div>
+<div style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);border-radius:20px;padding:22px;box-shadow:0 24px 60px rgba(15,20,60,.28),inset 0 1px 0 rgba(255,255,255,.35);max-width:480px">
+<div style="font-size:.62rem;font-weight:800;letter-spacing:.3em;text-transform:uppercase;margin-bottom:8px;color:rgba(255,255,255,.85)">🏠 Nombre de la sala</div>
 <div style="display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.7);padding:0 0 8px;font-size:1.25rem">
 <span style="opacity:.65;font-weight:600;flex-shrink:0">cuckoo.enarm/</span>
 <input id="in-slug" value="${esc(st.slug)}" maxlength="20" placeholder="mi-sala" autocomplete="off" style="flex:1;background:transparent;border:0;outline:0;color:#fff;font-size:1.25rem;font-weight:700;min-width:0">
@@ -608,21 +612,42 @@ ${(() => { const rs = leerSalasRecientes(); return rs.length ? `
 <span style="font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.55)">Recientes</span>
 ${rs.map(s => `<button data-sala="${esc(s)}" class="btn-sala-reciente" style="border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);color:#fff;padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:700;cursor:pointer;transition:.2s">↩ ${esc(s)}</button>`).join("")}
 </div>` : ""; })()}
-<div style="display:flex;justify-content:flex-end;gap:12px;margin-top:16px">
-<button id="btn-saltar" style="border:0;color:#fff;cursor:pointer;background:rgba(31,50,139,.28);padding:10px 22px;border-radius:8px;font-family:inherit;font-size:.95rem;transition:.2s">Saltar</button>
-<button id="btn-continuar" aria-label="Avanza" style="border:0;color:#fff;cursor:pointer;display:flex;align-items:center;gap:10px;height:42px;padding:0 22px;background:rgba(31,50,139,.38);font-size:.95rem;font-weight:700;letter-spacing:.04em;border-radius:8px;transition:.25s">Avanza <span style="font-size:1.3rem;display:inline-block;animation:nudgeRight ${e.bounce}s ease-in-out infinite">⟶</span></button>
+<div style="font-size:.62rem;font-weight:800;letter-spacing:.3em;text-transform:uppercase;margin:18px 0 8px;color:rgba(255,255,255,.85)">🙋 Tu nombre</div>
+<input id="in-nombre-landing" placeholder="¿Cómo te llamas?" maxlength="22" value="${esc(st.name)}" autocomplete="off" style="width:100%;padding:12px 14px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);color:#fff;outline:0;border-radius:12px;font-family:inherit;font-size:1rem;font-weight:600">
+<div id="caras-landing" style="display:flex;gap:8px;margin:12px 0 18px;flex-wrap:wrap"></div>
+<button id="btn-entrar-landing" style="width:100%;border:0;background:linear-gradient(92deg,#fff,#ffe9c4);color:#4a3fb5;padding:15px 22px;border-radius:14px;font-weight:800;cursor:pointer;font-family:inherit;font-size:1.05rem;letter-spacing:.02em;transition:.2s;box-shadow:0 14px 30px rgba(10,14,50,.3)">Entrar a la sala <span style="display:inline-block;animation:nudgeRight ${e.bounce}s ease-in-out infinite">⟶</span></button>
+<div style="font-size:.68rem;color:rgba(255,255,255,.6);margin-top:10px;text-align:center">Comparte este link con quien quieras: escriben su sala, su nombre ¡y adentro!</div>
 </div>
 </div>
 </div>
 </div>
 </div>`;
-  document.getElementById("btn-saltar").addEventListener("click", goProfileScreen);
-  document.getElementById("btn-continuar").addEventListener("click", goProfileScreen);
   const inSlug = document.getElementById("in-slug");
+  const inNomL = document.getElementById("in-nombre-landing");
+  const intentarEntrar = () => {
+    if (!(st.slug || "").trim()) { if (inSlug) inSlug.focus(); return; }
+    st.slug = st.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 20);
+    if (!(st.name || "").trim()) { goProfileScreen(); return; }
+    enterRoom();
+  };
   if (inSlug) {
     inSlug.addEventListener("input", e => st.slug = e.target.value);
-    inSlug.addEventListener("keydown", e => { if (e.key === "Enter") goProfileScreen(); });
+    inSlug.addEventListener("keydown", e => { if (e.key === "Enter") { if (inNomL && !(st.name || "").trim()) inNomL.focus(); else intentarEntrar(); } });
   }
+  if (inNomL) {
+    inNomL.addEventListener("input", e => st.name = e.target.value);
+    inNomL.addEventListener("keydown", e => { if (e.key === "Enter") intentarEntrar(); });
+  }
+  const carasL = document.getElementById("caras-landing");
+  if (carasL) FACES.forEach(f => {
+    const b = document.createElement("button");
+    const sel = f === st.face;
+    b.style.cssText = "width:42px;height:42px;border-radius:50%;border:2px solid transparent;background:#fff;font-size:1.15rem;cursor:pointer;transition:.2s" + (sel ? ";border-color:#41ffb7;box-shadow:0 0 0 3px rgba(65,255,183,.25);transform:scale(1.1)" : ";opacity:.85");
+    b.textContent = f;
+    b.addEventListener("click", () => { st.face = f; render(); });
+    carasL.appendChild(b);
+  });
+  const bel = document.getElementById("btn-entrar-landing"); if (bel) bel.addEventListener("click", intentarEntrar);
   document.querySelectorAll(".btn-sala-reciente").forEach(b => b.addEventListener("click", () => {
     st.slug = b.dataset.sala;
     if (st.name) { localStorage.setItem("cuckoo-slug", st.slug); enterRoom(); } else goProfileScreen();
