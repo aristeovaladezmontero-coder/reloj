@@ -159,9 +159,9 @@ function getPalette() { return PALETTES[st.tweakPaleta] || PALETTES.violeta; }
 function getEnergy() { return ENERGY[st.tweakEnergia] || ENERGY.normal; }
 
 const st = {
-  // Reconexión directa: si ya hay sala y nombre guardados, entra directo a la última sala
-  screen: (params.get("sala") || localStorage.getItem("cuckoo-slug")) ? (localStorage.getItem("cuckoo-nombre") ? "room" : "profile") : "landing",
-  slug: (params.get("sala") || localStorage.getItem("cuckoo-slug") || "sala-enarm").trim(),
+  // Siempre inicia en la portada: la sala se escribe a mano (el link ya no mete a ninguna sala)
+  screen: "landing",
+  slug: (localStorage.getItem("cuckoo-slug") || "").trim(),
   name: localStorage.getItem("cuckoo-nombre") || "",
   face: localStorage.getItem("cuckoo-cara") || "🧑\u200d⚕️",
   focusMin: Number(localStorage.getItem("cuckoo-focusMin")) || 50,
@@ -440,7 +440,7 @@ async function enterRoom() {
     backend = null;
     mostrarAviso("No se pudo conectar con la sala. Revisa tu conexión.");
   }
-  history.replaceState(null, "", `?sala=${encodeURIComponent(st.slug)}`);
+  history.replaceState(null, "", location.pathname); // el link compartido siempre lleva a la portada
 }
 function goLandingScreen() {
   clearInterval(breatheTimer);
@@ -585,7 +585,7 @@ function renderLanding() {
   const pal = getPalette(), e = getEnergy();
   root.innerHTML = `
 <div style="min-height:100vh;position:relative;overflow-x:hidden;font-family:'Inter',ui-sans-serif,system-ui,sans-serif;color:#fff;background:${pal.bg};background-size:200% 200%;animation:gradientShift ${e.grad}s ease infinite">
-<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:50px;position:relative;z-index:2;animation:fadeUp .5s ease">
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:52px;min-height:100vh;padding:70px 50px 60px;position:relative;z-index:2;animation:fadeUp .5s ease">
 <div style="position:absolute;top:26px;left:34px;display:flex;align-items:center;gap:8px;font-family:'Manrope',sans-serif;font-weight:800;font-size:1.2rem;letter-spacing:.04em">
 <span style="display:flex;align-items:center">RÍ<span style="display:inline-block;width:11px;height:11px;border:3px solid currentColor;border-radius:50%;margin-left:2px"></span></span>
 <span style="font-size:.62rem;font-weight:800;letter-spacing:.16em;background:rgba(255,255,255,.16);padding:4px 8px;border-radius:20px">ENARM</span>
@@ -617,6 +617,27 @@ ${rs.map(s => `<button data-sala="${esc(s)}" class="btn-sala-reciente" style="bo
 <div id="caras-landing" style="display:flex;gap:8px;margin:12px 0 18px;flex-wrap:wrap"></div>
 <button id="btn-entrar-landing" style="width:100%;border:0;background:linear-gradient(92deg,#fff,#ffe9c4);color:#4a3fb5;padding:15px 22px;border-radius:14px;font-weight:800;cursor:pointer;font-family:inherit;font-size:1.05rem;letter-spacing:.02em;transition:.2s;box-shadow:0 14px 30px rgba(10,14,50,.3)">Entrar a la sala <span style="display:inline-block;animation:nudgeRight ${e.bounce}s ease-in-out infinite">⟶</span></button>
 <div style="font-size:.68rem;color:rgba(255,255,255,.6);margin-top:10px;text-align:center">Comparte este link con quien quieras: escriben su sala, su nombre ¡y adentro!</div>
+</div>
+</div>
+</div>
+</div>
+<div style="width:min(1120px,100%);animation:fadeUp .7s ease">
+<div style="display:inline-flex;align-items:center;gap:8px;font-size:.64rem;font-weight:800;letter-spacing:.28em;text-transform:uppercase;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);padding:7px 14px;border-radius:20px;margin-bottom:16px">🍅 ¿Cómo funciona?</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">
+<div style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.26);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);border-radius:18px;padding:20px 22px;box-shadow:0 20px 50px rgba(15,20,60,.24),inset 0 1px 0 rgba(255,255,255,.3)">
+<div style="font-size:1.5rem;margin-bottom:8px">🍅</div>
+<div style="font-family:'Sora',sans-serif;font-weight:800;font-size:.98rem;margin-bottom:6px">La técnica Pomodoro</div>
+<p style="margin:0;font-size:.82rem;line-height:1.6;color:rgba(255,255,255,.78)">Estudias en <b style="color:#fff">bloques de enfoque total</b> y descansas unos minutos entre cada uno. Tu cerebro rinde mucho más en ciclos cortos que en maratones sin fin.</p>
+</div>
+<div style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.26);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);border-radius:18px;padding:20px 22px;box-shadow:0 20px 50px rgba(15,20,60,.24),inset 0 1px 0 rgba(255,255,255,.3)">
+<div style="font-size:1.5rem;margin-bottom:8px">🏠</div>
+<div style="font-family:'Sora',sans-serif;font-weight:800;font-size:.98rem;margin-bottom:6px">Entra a tu sala</div>
+<p style="margin:0;font-size:.82rem;line-height:1.6;color:rgba(255,255,255,.78)">Escribe el <b style="color:#fff">nombre de tu sala</b> y tu nombre. Todos los que entren a la misma sala comparten el mismo reloj: mismo enfoque, mismo descanso, misma meta.</p>
+</div>
+<div style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.26);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);border-radius:18px;padding:20px 22px;box-shadow:0 20px 50px rgba(15,20,60,.24),inset 0 1px 0 rgba(255,255,255,.3)">
+<div style="font-size:1.5rem;margin-bottom:8px">🔁</div>
+<div style="font-family:'Sora',sans-serif;font-weight:800;font-size:.98rem;margin-bottom:6px">El ritmo se cumple solo</div>
+<p style="margin:0;font-size:.82rem;line-height:1.6;color:rgba(255,255,255,.78)">Al terminar cada bloque <b style="color:#fff">suena la alarma</b>, cae confeti 🎉 y el siguiente ciclo arranca en automático. Tú solo siéntate a estudiar.</p>
 </div>
 </div>
 </div>
