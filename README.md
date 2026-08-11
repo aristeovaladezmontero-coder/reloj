@@ -1,9 +1,9 @@
-[README.md](https://github.com/user-attachments/files/30940428/README.md)
+[README.md](https://github.com/user-attachments/files/30941564/README.md)
 <div align="center">
 
 <img src="icono-rio.png" width="120" alt="Río, la mascota de la app">
 
-# Tequio ENARM
+# Río ENARM
 
 **Estudiamos juntos. Rendimos más.**
 
@@ -11,7 +11,7 @@ Una app hecha *por un grupo de amigos, para amigos*, con un solo objetivo:
 cumplir nuestros tiempos de estudio de manera **ordenada y sincronizada** —
 mismo reloj, mismos descansos, misma meta.
 
-🌱 *Tequio* (del náhuatl **tequitl**): trabajo colectivo que cada persona aporta para el bien de su comunidad.
+🐶 **Río** es el perrito de la casa: la mascota oficial que vigila que todos cumplamos nuestros tiempos.
 
 [**▶ Abrir la app**](https://aristeovaladezmontero-coder.github.io/reloj/) · [Instalar en Mac](#-app-para-mac-barra-de-menú)
 
