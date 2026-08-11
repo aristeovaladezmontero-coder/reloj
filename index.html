@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Cuckoo ENARM</title>
-<link rel="icon" type="image/png" href="icono-cuckoo-enarm.png">
-<link rel="apple-touch-icon" href="icono-cuckoo-enarm.png">
+<title>Río ENARM</title>
+<link rel="icon" type="image/png" href="icono-rio.png">
+<link rel="apple-touch-icon" href="icono-rio.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&family=Sora:wght@700;800&display=swap" rel="stylesheet">
@@ -271,7 +271,7 @@ function notify(texto) {
   if (!st.soundOn) return;
   try {
     if ("Notification" in window) {
-      if (Notification.permission === "granted") new Notification("Cuckoo ENARM", { body: texto });
+      if (Notification.permission === "granted") new Notification("Río ENARM", { body: texto });
       else if (Notification.permission !== "denied") Notification.requestPermission();
     }
   } catch (e) {}
@@ -331,7 +331,7 @@ async function crearBackend() {
       }).catch(() => {});
       unsubs.push(dbMod.onChildAdded(r.perfiles, (snap) => {
         const p = snap.val() || {};
-        if (snap.key !== uid && p.creadoEn && ahora() - p.creadoEn < 30000) showToast(`${p.cara || "🙂"} ¡${p.nombre} se unió a la Cuckoo!`);
+        if (snap.key !== uid && p.creadoEn && ahora() - p.creadoEn < 30000) showToast(`${p.cara || "🙂"} ¡${p.nombre} se unió a Río!`);
       }));
       unsubs.push(dbMod.onValue(r.gente, (snap) => { st.gente = snap.val() || {}; render(); }));
       unsubs.push(dbMod.onValue(r.timer, (snap) => {
@@ -587,7 +587,7 @@ function renderLanding() {
 <div style="min-height:100vh;position:relative;overflow-x:hidden;font-family:'Inter',ui-sans-serif,system-ui,sans-serif;color:#fff;background:${pal.bg};background-size:200% 200%;animation:gradientShift ${e.grad}s ease infinite">
 <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:50px;position:relative;z-index:2;animation:fadeUp .5s ease">
 <div style="position:absolute;top:26px;left:34px;display:flex;align-items:center;gap:8px;font-family:'Manrope',sans-serif;font-weight:800;font-size:1.2rem;letter-spacing:.04em">
-<span style="display:flex;align-items:center">CUCKO<span style="display:inline-block;width:11px;height:11px;border:3px solid currentColor;border-radius:50%;margin-left:2px"></span></span>
+<span style="display:flex;align-items:center">RÍ<span style="display:inline-block;width:11px;height:11px;border:3px solid currentColor;border-radius:50%;margin-left:2px"></span></span>
 <span style="font-size:.62rem;font-weight:800;letter-spacing:.16em;background:rgba(255,255,255,.16);padding:4px 8px;border-radius:20px">ENARM</span>
 </div>
 <div style="width:min(1120px,100%);display:grid;grid-template-columns:.9fr 1.1fr;align-items:center;gap:70px">
@@ -604,7 +604,7 @@ ${bubbleDefs.map((b, i) => `<div style="position:absolute;left:${b.left}px;top:$
 <div style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);border-radius:20px;padding:22px;box-shadow:0 24px 60px rgba(15,20,60,.28),inset 0 1px 0 rgba(255,255,255,.35);max-width:480px">
 <div style="font-size:.62rem;font-weight:800;letter-spacing:.3em;text-transform:uppercase;margin-bottom:8px;color:rgba(255,255,255,.85)">🏠 Nombre de la sala</div>
 <div style="display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.7);padding:0 0 8px;font-size:1.25rem">
-<span style="opacity:.65;font-weight:600;flex-shrink:0">cuckoo.enarm/</span>
+<span style="opacity:.65;font-weight:600;flex-shrink:0">rio.enarm/</span>
 <input id="in-slug" value="${esc(st.slug)}" maxlength="20" placeholder="mi-sala" autocomplete="off" style="flex:1;background:transparent;border:0;outline:0;color:#fff;font-size:1.25rem;font-weight:700;min-width:0">
 </div>
 ${(() => { const rs = leerSalasRecientes(); return rs.length ? `
@@ -660,7 +660,7 @@ function renderProfile() {
 <div style="min-height:100vh;position:relative;overflow-x:hidden;font-family:'Inter',ui-sans-serif,system-ui,sans-serif;color:#fff;background:${pal.bg};background-size:200% 200%;animation:gradientShift ${e.grad}s ease infinite">
 <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:30px;position:relative;z-index:2">
 <div style="width:min(430px,100%);background:rgba(40,36,121,.32);border:1px solid rgba(255,255,255,.24);backdrop-filter:blur(20px);padding:34px;border-radius:16px;box-shadow:0 30px 70px rgba(21,27,84,.35);animation:popIn .4s ease">
-<div style="display:flex;align-items:center;gap:8px;font-family:'Manrope',sans-serif;font-weight:800;font-size:1.1rem;margin-bottom:28px">CUCKO<span style="display:inline-block;width:11px;height:11px;border:3px solid currentColor;border-radius:50%;margin-left:2px"></span></div>
+<div style="display:flex;align-items:center;gap:8px;font-family:'Manrope',sans-serif;font-weight:800;font-size:1.1rem;margin-bottom:28px">RÍ<span style="display:inline-block;width:11px;height:11px;border:3px solid currentColor;border-radius:50%;margin-left:2px"></span></div>
 <h2 style="margin:0 0 8px;font-size:2rem;font-family:'Manrope',sans-serif">Crea tu perfil</h2>
 <p style="color:rgba(255,255,255,.7);margin:0">Así te verán tus compañeros dentro de esta sala.</p>
 <div style="display:flex;align-items:center;gap:10px;margin-top:12px;font-size:.8rem">
@@ -706,7 +706,7 @@ function renderRoom() {
   const pauseLabel = !running ? "PAUSADO" : (modo === "work" ? "ENFOCADO" : "DESCANSANDO");
   const startLabel = terminado ? "SIGUIENTE" : (running ? "PAUSA" : "INICIAR");
   const finishText = modo === "work" ? "¡Sesión de enfoque terminada! 🎉" : "¡Descanso terminado! 🎉";
-  const noticeText = terminado ? `¡Tu sesión de ${modo === "work" ? "enfoque" : "descanso"} terminó!` : "Te uniste a esta Cuckoo justo ahora";
+  const noticeText = terminado ? `¡Tu sesión de ${modo === "work" ? "enfoque" : "descanso"} terminó!` : "Te uniste a esta sala justo ahora";
   const breatheCaption = ({ 3: "Prepárate", 2: "Respira", 1: "Silencio" })[st.breatheCount] || "Silencio";
 
   // gente REAL de Firebase, filtrada a quien mandó señal de vida hace poco
@@ -739,7 +739,7 @@ function renderRoom() {
 
 <div style="position:relative;z-index:2">
 <div style="position:fixed;top:26px;left:34px;display:flex;align-items:center;gap:8px;font-family:'Manrope',sans-serif;font-weight:800;font-size:1.15rem;letter-spacing:.04em;z-index:5">
-<span style="display:flex;align-items:center">CUCKO<span style="display:inline-block;width:10px;height:10px;border:3px solid currentColor;border-radius:50%;margin-left:2px"></span></span>
+<span style="display:flex;align-items:center">RÍ<span style="display:inline-block;width:10px;height:10px;border:3px solid currentColor;border-radius:50%;margin-left:2px"></span></span>
 <span style="font-size:.6rem;font-weight:700;letter-spacing:.14em;background:rgba(0,0,0,.18);padding:4px 8px;border-radius:20px;text-transform:uppercase">${esc(st.slug)}</span>
 </div>
 <div style="position:fixed;top:24px;right:30px;display:flex;gap:14px;z-index:5;background:rgba(0,0,0,.14);padding:10px 14px;border-radius:30px;backdrop-filter:blur(6px)">
