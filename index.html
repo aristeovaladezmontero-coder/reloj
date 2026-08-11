@@ -63,6 +63,15 @@ input:focus{outline:none;box-shadow:0 0 0 3px rgba(255,255,255,.25)!important;ba
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:8px;border:3px solid transparent;background-clip:padding-box}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Portada compacta para la ventana de la app */
+@media (max-width: 720px) {
+  .landing-wrap { padding: 60px 18px 30px !important; gap: 26px !important; justify-content: flex-start !important; }
+  .landing-grid { display: block !important; width: 100% !important; }
+  .landing-bubbles { display: none !important; }
+  .landing-h1 { font-size: 1.9rem !important; margin-bottom: 10px !important; }
+  .landing-p { font-size: .88rem !important; }
+}
 </style>
 </head>
 <body>
@@ -585,20 +594,20 @@ function renderLanding() {
   const pal = getPalette(), e = getEnergy();
   root.innerHTML = `
 <div style="min-height:100vh;position:relative;overflow-x:hidden;font-family:'Inter',ui-sans-serif,system-ui,sans-serif;color:#fff;background:${pal.bg};background-size:200% 200%;animation:gradientShift ${e.grad}s ease infinite">
-<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:52px;min-height:100vh;padding:70px 50px 60px;position:relative;z-index:2;animation:fadeUp .5s ease">
+<div class="landing-wrap" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:52px;min-height:100vh;padding:70px 50px 60px;position:relative;z-index:2;animation:fadeUp .5s ease">
 <div style="position:absolute;top:26px;left:34px;display:flex;align-items:center;gap:8px;font-family:'Manrope',sans-serif;font-weight:800;font-size:1.2rem;letter-spacing:.04em">
 <span style="display:flex;align-items:center">RÍ<span style="display:inline-block;width:11px;height:11px;border:3px solid currentColor;border-radius:50%;margin-left:2px"></span></span>
 <span style="font-size:.62rem;font-weight:800;letter-spacing:.16em;background:rgba(255,255,255,.16);padding:4px 8px;border-radius:20px">ENARM</span>
 </div>
-<div style="width:min(1120px,100%);display:grid;grid-template-columns:.9fr 1.1fr;align-items:center;gap:70px">
-<div style="height:420px;max-width:300px;position:relative;overflow:visible" aria-hidden="true">
+<div class="landing-grid" style="width:min(1120px,100%);display:grid;grid-template-columns:.9fr 1.1fr;align-items:center;gap:70px">
+<div class="landing-bubbles" style="height:420px;max-width:300px;position:relative;overflow:visible" aria-hidden="true">
 ${glowDefs.map((g, i) => `<div style="position:absolute;left:${g.left}px;top:${g.top}px;width:${g.size}px;height:${g.size}px;border-radius:50%;background:${g.color};filter:blur(34px);animation:floatYSlow ${e.float+4+i*2}s ease-in-out infinite;animation-delay:${i*0.6}s"></div>`).join("")}
 ${bubbleDefs.map((b, i) => `<div style="position:absolute;left:${b.left}px;top:${b.top}px;width:${b.size}px;height:${b.size}px;border-radius:50%;background:${b.bg};display:grid;place-items:center;box-shadow:0 28px 60px rgba(21,25,73,.28);border:1px solid rgba(255,255,255,.2);animation:floatYNormal ${e.float+i*0.6}s ease-in-out infinite;animation-delay:${i*0.3}s"><b style="font-size:${b.size>140?"3rem":"2.1rem"};filter:drop-shadow(0 8px 10px rgba(0,0,0,.15))">${b.emoji}</b></div>`).join("")}
 </div>
 <div>
 <div style="display:inline-flex;align-items:center;gap:8px;font-size:.64rem;font-weight:800;letter-spacing:.28em;text-transform:uppercase;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);padding:7px 14px;border-radius:20px;margin-bottom:16px">✦ Por amigos, para amigos</div>
-<h1 style="font-family:'Sora','Manrope',sans-serif;font-size:clamp(2.6rem,5.4vw,4.6rem);letter-spacing:-.04em;line-height:1.04;margin:0 0 16px;font-weight:800;background:linear-gradient(92deg,#ffffff 15%,#ffe9b8 55%,#ffc2e2 90%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">Estudiamos juntos.<br>Rendimos más.</h1>
-<p style="font-size:1.06rem;color:rgba(255,255,255,.8);margin:0 0 14px;max-width:52ch;line-height:1.6">Una app hecha <b style="color:#fff">por un grupo de amigos, para amigos</b>, con un solo objetivo: cumplir nuestros tiempos de estudio de manera <b style="color:#fff">ordenada y sincronizada</b> — mismo reloj, mismos descansos, misma meta.</p>
+<h1 class="landing-h1" style="font-family:'Sora','Manrope',sans-serif;font-size:clamp(2.6rem,5.4vw,4.6rem);letter-spacing:-.04em;line-height:1.04;margin:0 0 16px;font-weight:800;background:linear-gradient(92deg,#ffffff 15%,#ffe9b8 55%,#ffc2e2 90%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">Estudiamos juntos.<br>Rendimos más.</h1>
+<p class="landing-p" style="font-size:1.06rem;color:rgba(255,255,255,.8);margin:0 0 14px;max-width:52ch;line-height:1.6">Una app hecha <b style="color:#fff">por un grupo de amigos, para amigos</b>, con un solo objetivo: cumplir nuestros tiempos de estudio de manera <b style="color:#fff">ordenada y sincronizada</b> — mismo reloj, mismos descansos, misma meta.</p>
 <div style="font-size:.78rem;color:rgba(255,255,255,.82);margin:0 0 6px">📅 ${fechaBonita()} &nbsp;·&nbsp; 🎯 ${textoEnarm()}</div>
 <div style="font-size:.72rem;font-style:italic;color:rgba(255,255,255,.6);margin:0 0 30px">“${fraseDelDia()}”</div>
 <div style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);border-radius:20px;padding:22px;box-shadow:0 24px 60px rgba(15,20,60,.28),inset 0 1px 0 rgba(255,255,255,.35);max-width:480px">
